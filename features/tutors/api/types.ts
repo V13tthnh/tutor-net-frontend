@@ -50,3 +50,30 @@ export type FilterOptionsResponse = {
   teachingModes: TeachingModeOption[];
 };
 
+export interface ContractPreviewResponse {
+  tutorName: string;
+  tutorBirthYear: number;
+  tutorPhone: string;
+  tutorEmail: string;
+  studentName: string;
+  studentPhone: string;
+  studentEmail: string;
+  studentAddress: string;
+  subjectAndLevel: string;
+  tuitionRate: number;
+  scheduleDetail: string;
+  introductionFee: number;
+}
+
+export interface RejectInvitationRequest {
+  rejectionReason: string | null;
+}
+
+export interface ApiResponse<T> {
+  success: boolean;
+  message?: string;
+  data: T;
+  timestamp?: string;
+}
+
+

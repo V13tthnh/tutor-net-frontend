@@ -1,8 +1,8 @@
 import { mutationOptions } from '@tanstack/react-query';
 import { getQueryClient } from '@/lib/query-client';
-import { createUser, updateUser, deleteUser, resetPassword, updateAvatar, reviewClassRequest, bulkReviewClassRequests } from './service';
-import { userKeys, classRequestKeys } from './queries';
-import type { CreateUserPayload, UpdateUserPayload, ResetPasswordPayload, ReviewClassRequest } from './types';
+import { createUser, updateUser, deleteUser, resetPassword, updateAvatar, reviewClassRequest, bulkReviewClassRequests, forceCancelTutorInvitation } from './service';
+import { userKeys, classRequestKeys, tutorInvitationKeys } from './queries';
+import type { CreateUserPayload, UpdateUserPayload, ResetPasswordPayload, ReviewClassRequest, AdminCancelInvitationRequest } from './types';
 
 export const createUserMutation = mutationOptions({
   mutationFn: (data: CreateUserPayload) => createUser(data),
@@ -55,5 +55,13 @@ export const bulkReviewClassRequestsMutation = mutationOptions({
     bulkReviewClassRequests(ids, data),
   onSuccess: () => {
     getQueryClient().invalidateQueries({ queryKey: classRequestKeys.all });
+  }
+});
+
+export const forceCancelTutorInvitationMutation = mutationOptions({
+  mutationFn: ({ id, data }: { id: number; data: AdminCancelInvitationRequest }) =>
+    forceCancelTutorInvitation(id, data),
+  onSuccess: () => {
+    getQueryClient().invalidateQueries({ queryKey: tutorInvitationKeys.all });
   }
 });

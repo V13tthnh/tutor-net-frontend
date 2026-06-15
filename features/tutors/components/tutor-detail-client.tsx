@@ -1,8 +1,10 @@
 'use client';
 
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { tutorByIdOptions } from '../api/queries';
 import { publicTutorReviewsQueryOptions } from '@/features/reviews/api/queries';
+import { TutorInviteModal } from './tutor-invite-modal';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
@@ -83,6 +85,7 @@ function TeachingMethodBadge({ method }: { method: string }) {
 export function TutorDetailClient({ id }: TutorDetailClientProps) {
   const { data, isLoading, isError } = useQuery(tutorByIdOptions(id));
   const { data: reviews = [] } = useQuery(publicTutorReviewsQueryOptions(id));
+  const [inviteOpen, setInviteOpen] = useState(false);
 
   if (isLoading) {
     return (
@@ -365,11 +368,11 @@ export function TutorDetailClient({ id }: TutorDetailClientProps) {
                   </div>
                 </div>
 
-                <Button size='lg' className='w-full gap-2 text-base' onClick={() => alert('Chức năng liên hệ đang được phát triển!')}>
+                <Button size='lg' className='w-full gap-2 text-base' onClick={() => setInviteOpen(true)}>
                   <IconMessageCircle size={20} />
-                  Liên hệ gia sư
+                  Mời gia sư dạy học
                 </Button>
-                <Button size='lg' variant='outline' className='mt-3 w-full gap-2 text-base' onClick={() => alert('Chức năng đặt lịch đang được phát triển!')}>
+                <Button size='lg' variant='outline' className='mt-3 w-full gap-2 text-base' onClick={() => setInviteOpen(true)}>
                   <IconCalendar size={20} />
                   Đặt lịch học thử
                 </Button>
@@ -394,6 +397,13 @@ export function TutorDetailClient({ id }: TutorDetailClientProps) {
           </div>
         </div>
       </div>
+
+      {/* Invite Modal */}
+      <TutorInviteModal
+        tutor={tutor}
+        open={inviteOpen}
+        onClose={() => setInviteOpen(false)}
+      />
     </div>
   );
 }

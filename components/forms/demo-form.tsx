@@ -37,7 +37,7 @@ import { cn } from '@/lib/utils';
 // Schema (form-level safety net — onSubmit catches anything field-level missed)
 const demoFormSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
-  email: z.email('Invalid email address'),
+  email: z.string().email('Invalid email address'),
   age: z.number().min(18, 'Must be at least 18 years old'),
   password: z.string().min(8, 'Password must be at least 8 characters'),
   phone: z.string().min(10, 'Phone must be at least 10 digits'),
@@ -616,7 +616,6 @@ export default function DemoForm() {
                               selected={field.state.value}
                               onSelect={field.handleChange}
                               disabled={(date) => date > new Date()}
-                              initialFocus
                             />
                           </PopoverContent>
                         </Popover>
@@ -684,7 +683,6 @@ export default function DemoForm() {
                               selected={range}
                               onSelect={field.handleChange}
                               numberOfMonths={2}
-                              initialFocus
                             />
                           </PopoverContent>
                         </Popover>

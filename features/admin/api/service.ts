@@ -544,3 +544,44 @@ export async function bulkReviewClassRequests(classRequestIds: number[], reviewD
 
   return res;
 }
+
+// ──── Tutor Invitation Management ──────────────────────────────────────────
+
+import type { TutorInvitationFilters, TutorInvitationsPageResponse, AdminCancelInvitationRequest } from './types';
+
+// ─── Get tutor invitations list ────────────────────────────────────────
+export async function getAdminTutorInvitations(filters: TutorInvitationFilters): Promise<TutorInvitationsPageResponse> {
+  const params = new URLSearchParams();
+  if (filters.page !== undefined) params.append('page', String(filters.page));
+  if (filters.limit !== undefined) params.append('size', String(filters.limit));
+  if (filters.keyword) params.append('keyword', filters.keyword);
+  if (filters.status) params.append('status', filters.status);
+  if (filters.startDate) params.append('startDate', filters.startDate);
+  if (filters.endDate) params.append('endDate', filters.endDate);
+  if (filters.sortBy) params.append('sortBy', filters.sortBy);
+  if (filters.sortDir) params.append('sortDir', filters.sortDir);
+
+  const res = await apiClient<TutorInvitationsPageResponse>(`/admin/tutor-invitations?${params.toString()}`, {
+    cache: 'no-store'
+  });
+
+  if (!res.success) {
+    throw new Error(res.message || 'Lỗi lấy danh sách lời mời từ API');
+  }
+
+  return res;
+}
+
+// ─── Force cancel tutor invitation ────────────────────────────────────
+export async function forceCancelTutorInvitation(id: number, data: AdminCancelInvitationRequest) {
+  const res = await apiClient<{ success: boolean; message?: string }>(`/admin/tutor-invitations/${id}/cancel`, {
+    method: 'PATCH',
+    body: JSON.stringify(data)
+  });
+
+  if (!res.success) {
+    throw new Error(res.message || 'Lỗi hủy lời mời');
+  }
+
+  return res;
+}

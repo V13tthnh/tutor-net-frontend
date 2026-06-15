@@ -20,8 +20,17 @@ export interface ClassRequest {
   targetTutorName: string | null;
   status: string;
   totalApplicants: number;
+  hasAccount: boolean;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface ClassRequestDropdown {
+  id: number;
+  classCode: string;
+  subjectName: string;
+  gradeLevel: string;
+  proposedPrice: number;
 }
 
 export type ClassFilters = {

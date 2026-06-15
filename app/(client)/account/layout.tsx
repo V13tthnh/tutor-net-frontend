@@ -61,7 +61,7 @@ export default function AccountLayout({ children }: { children: React.ReactNode 
             { id: 'invitations', label: 'Lời mời dạy', icon: <Icons.email size={16} />, href: `/account/${allowedUsername}/invitations` }
         ] : []),
         { id: 'add-cv', label: 'Đăng ký làm gia sư', icon: <Icons.cv size={16} />, href: `/account/${allowedUsername}/new-cv` },
-        { id: 'add-class', label: 'Đăng lớp', icon: <Icons.class size={16} />, href: `/account/${allowedUsername}/new-class` },
+        // { id: 'add-class', label: 'Đăng lớp', icon: <Icons.class size={16} />, href: `/account/${allowedUsername}/new-class` },
         { id: 'my-classes', label: 'Lớp của tôi', icon: <Icons.class size={16} />, href: `/account/${allowedUsername}/new-class` },
         { id: 'history', label: 'Yêu cầu tìm gia sư', icon: <Icons.history size={16} />, href: `/account/${allowedUsername}/history` },
         { id: 'security', label: 'Bảo mật', icon: <Icons.lock size={16} />, href: `/account/${allowedUsername}/security` },

@@ -5,7 +5,7 @@ import { ThemeModeToggle } from '@/components/themes/theme-mode-toggle';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn, getAvatarUrl } from '@/lib/utils';
-import { IconMenu2, IconX } from '@tabler/icons-react';
+import { IconMenu2, IconX, IconSearch, IconPlus } from '@tabler/icons-react';
 import { Icons } from '@/components/icons';
 import { useState, useEffect } from 'react';
 import { apiClient } from '@/lib/api-client';
@@ -23,6 +23,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useAuthSession } from '@/features/auth/hooks/use-auth-session';
 import { NotificationCenter } from '@/features/notifications/components/notification-center';
+import { toast } from 'sonner';
 
 type NavCategory = { label: string; items: { name: string; slug: string }[] };
 
@@ -118,6 +119,60 @@ export function PublicHeader() {
 
   return (
     <header className='bg-background/80 sticky top-0 z-50 border-b backdrop-blur-xl'>
+      {/* ── Top utility bar ─────────────────────────────────────────────── */}
+      <div className='border-b border-border/60 bg-muted/40'>
+        <div className='mx-auto flex h-8 max-w-7xl items-center justify-end gap-0.5 px-4 sm:px-6 lg:px-8'>
+          <Link
+            href='/track-class'
+            className={cn(
+              'flex items-center gap-1.5 rounded px-2.5 py-1 text-xs font-medium transition-colors',
+              mounted && pathname?.startsWith('/track-class')
+                ? 'text-primary bg-primary/10'
+                : 'text-muted-foreground hover:text-foreground hover:bg-accent'
+            )}
+          >
+            <IconSearch size={11} />
+            Tra cứu thông tin lớp
+          </Link>
+          <span className='h-3 w-px bg-border mx-0.5' />
+          <Link
+            href='/post-class'
+            className={cn(
+              'flex items-center gap-1.5 rounded px-2.5 py-1 text-xs font-medium transition-colors',
+              mounted && pathname?.startsWith('/post-class')
+                ? 'text-primary bg-primary/10'
+                : 'text-muted-foreground hover:text-foreground hover:bg-accent'
+            )}
+          >
+            <IconPlus size={11} />
+            Đăng lớp
+          </Link>
+          <span className='h-3 w-px bg-border mx-0.5' />
+          <button
+            type='button'
+            onClick={() => {
+              if (!user?.email) {
+                toast.info('Vui lòng đăng nhập', {
+                  description: 'Bạn cần có tài khoản để tiếp tục.',
+                  action: { label: 'Đăng nhập', onClick: () => { window.location.href = '/auth/login'; } },
+                });
+                return;
+              }
+              window.location.href = `/account/${user.email.split('@')[0]}/new-cv`;
+            }}
+            className={cn(
+              'flex items-center gap-1.5 rounded px-2.5 py-1 text-xs font-medium transition-colors cursor-pointer',
+              mounted && pathname?.includes('/new-cv')
+                ? 'text-primary bg-primary/10'
+                : 'text-muted-foreground hover:text-foreground hover:bg-accent'
+            )}
+          >
+            <IconPlus size={11} />
+            Đăng ký làm gia sư
+          </button>
+        </div>
+      </div>
+
       <div className='mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8'>
         {/* Logo */}
         <Link href='/' className='flex items-center gap-2' id='public-logo'>
@@ -218,14 +273,7 @@ export function PublicHeader() {
                       Thông báo
                     </Link>
                   </DropdownMenuItem>
-                  {user.roles.includes('tutor') && (
-                    <DropdownMenuItem asChild className='cursor-pointer'>
-                      <Link href={`/account/${user.email.split('@')[0]}/new-class`}>
-                        <Icons.class className='mr-2 h-4 w-4' />
-                        Đăng lớp
-                      </Link>
-                    </DropdownMenuItem>
-                  )}
+
                   <DropdownMenuItem
                     onClick={async () => {
                       await clientLogoutAction();
@@ -240,11 +288,8 @@ export function PublicHeader() {
               </DropdownMenu></>
           ) : (
             <>
-              <Link href='/post-class'>
-                <Button variant='ghost'>Đăng lớp</Button>
-              </Link>
               <Link href='/auth/login'>
-                <Button >Đăng nhập</Button>
+                <Button variant='ghost'>Đăng nhập</Button>
               </Link>
 
             </>
