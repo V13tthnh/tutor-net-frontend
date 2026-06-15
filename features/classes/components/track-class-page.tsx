@@ -266,7 +266,7 @@ function TutorStatusCard({ data }: { data: ClassRequest }) {
 
         <div className='text-xs text-muted-foreground leading-relaxed bg-muted/50 rounded-lg p-3 space-y-1'>
           <p>
-            📱 Gia sư sẽ chủ động liên hệ với bạn qua số điện thoại{' '}
+            Gia sư sẽ chủ động liên hệ với bạn qua số điện thoại{' '}
             <strong>{maskPhone(data.contactPhone)}</strong> trong vòng{' '}
             <strong>24h tới</strong> để sắp xếp lịch dạy thử.
           </p>
