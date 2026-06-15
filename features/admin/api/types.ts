@@ -351,3 +351,56 @@ export type ClassRequestFilterOptions = {
   subjects: { id: number; name: string }[];
   teachingModes: { value: string; label: string }[];
 };
+
+// ──── Tutor Invitation Types ────────────────────────────────────────────────
+
+export type InvitationStatus = 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'CANCELED_BY_ADMIN';
+
+export type AdminTutorInvitationTableResponse = {
+  id: number;
+  classCode: string;
+  subjectName: string;
+  proposedPrice: number;
+
+  // Thông tin Phụ huynh (Người gửi)
+  studentName: string;
+  studentPhone: string;
+
+  // Thông tin Gia sư (Người nhận)
+  tutorId: number;
+  tutorName: string;
+
+  message: string;
+  status: InvitationStatus;
+  createdAt: string;
+  cancelReason: string | null;
+};
+
+export type TutorInvitationFilters = {
+  page?: number;
+  limit?: number;
+  keyword?: string;
+  status?: InvitationStatus | string;
+  startDate?: string;
+  endDate?: string;
+  sortBy?: string;
+  sortDir?: string;
+};
+
+export type TutorInvitationsPageResponse = {
+  success: boolean;
+  message: string;
+  data: {
+    content: AdminTutorInvitationTableResponse[];
+    page: number;
+    size: number;
+    totalElements: number;
+    totalPages: number;
+    last: boolean;
+  };
+  timestamp: string;
+};
+
+export type AdminCancelInvitationRequest = {
+  cancelReason: string;
+};

@@ -1,6 +1,6 @@
 import { queryOptions } from '@tanstack/react-query';
-import { getUsers, getUserStats, getUserById, getUserFilterOptions, getUserStatuses, getAdminTutors, getAdminTutorStats, getAdminTutorFilterOptions, getAdminTutorStatuses, getAdminTutorById, getAdminClassRequests, getAdminClassRequestDetail, getClassRequestFilterOptions } from './service';
-import type { User, UserFilters, AdminTutorFilters, ClassRequestFilters } from './types';
+import { getUsers, getUserStats, getUserById, getUserFilterOptions, getUserStatuses, getAdminTutors, getAdminTutorStats, getAdminTutorFilterOptions, getAdminTutorStatuses, getAdminTutorById, getAdminClassRequests, getAdminClassRequestDetail, getClassRequestFilterOptions, getAdminTutorInvitations } from './service';
+import type { User, UserFilters, AdminTutorFilters, ClassRequestFilters, TutorInvitationFilters } from './types';
 
 export type { User };
 
@@ -105,4 +105,15 @@ export const classRequestFilterOptionsQueryOptions = () =>
   queryOptions({
     queryKey: classRequestKeys.filterOptions(),
     queryFn: () => getClassRequestFilterOptions()
+  });
+
+export const tutorInvitationKeys = {
+  all: ['admin-tutor-invitations'] as const,
+  list: (filters: TutorInvitationFilters) => [...tutorInvitationKeys.all, 'list', filters] as const,
+};
+
+export const adminTutorInvitationsQueryOptions = (filters: TutorInvitationFilters) =>
+  queryOptions({
+    queryKey: tutorInvitationKeys.list(filters),
+    queryFn: () => getAdminTutorInvitations(filters)
   });

@@ -63,11 +63,7 @@ export function NotificationCenter() {
             <Icons.chevronRight className='text-muted-foreground h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5' />
           </Link>
           <div className='flex items-center gap-2'>
-            {count > 0 && (
-              <span className='bg-muted text-muted-foreground rounded-full px-2 py-0.5 text-xs'>
-                {count} thông báo
-              </span>
-            )}
+
             {count > 0 && (
               <Button
                 variant='ghost'

@@ -57,6 +57,13 @@ export const navGroups: NavGroup[] = [
 
           },
           {
+            title: 'Lời mời Gia sư',
+            url: '/admin/tutor-invitations',
+            icon: 'send',
+            shortcut: ['t', 'i'],
+            isActive: false,
+          },
+          {
             title: 'Môn học',
             url: '/admin/subjects',
             icon: 'book',

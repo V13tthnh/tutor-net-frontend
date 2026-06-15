@@ -1,5 +1,5 @@
 import { fakeTutors } from '@/constants/mock-api-tutors';
-import type { TutorFilters, TutorsResponse, TutorByIdResponse, FilterOptionsResponse } from './types';
+import type { TutorFilters, TutorsResponse, TutorByIdResponse, FilterOptionsResponse, ContractPreviewResponse, ApiResponse } from './types';
 import type { Tutor } from '@/constants/mock-api-tutors';
 import { apiClient } from '@/lib/api-client';
 
@@ -145,5 +145,22 @@ export async function getTutorById(id: number): Promise<TutorByIdResponse> {
 
 export async function getTutorStats(id: number): Promise<TutorByIdResponse> {
   return fakeTutors.getTutorById(id);
+}
+
+export async function getContractPreview(id: number): Promise<ApiResponse<ContractPreviewResponse>> {
+  return apiClient<ApiResponse<ContractPreviewResponse>>(`/tutor/invitations/${id}/contract-preview`);
+}
+
+export async function acceptAndSignContract(id: number): Promise<ApiResponse<void>> {
+  return apiClient<ApiResponse<void>>(`/tutor/invitations/${id}/accept-and-sign`, {
+    method: 'POST',
+  });
+}
+
+export async function rejectInvitation(id: number, reason: string | null): Promise<void> {
+  return apiClient<void>(`/tutor/invitations/${id}/reject`, {
+    method: 'POST',
+    body: JSON.stringify({ rejectionReason: reason }),
+  });
 }
 
