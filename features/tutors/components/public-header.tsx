@@ -25,7 +25,7 @@ import { useAuthSession } from '@/features/auth/hooks/use-auth-session';
 import { NotificationCenter } from '@/features/notifications/components/notification-center';
 import { toast } from 'sonner';
 
-type NavCategory = { label: string; items: { name: string; slug: string }[] };
+type NavCategory = { label: string; items: { name: string; slug: string; id: number }[] };
 
 const MORE_LINKS = [
   { href: '/pricing', label: 'Học phí' },
@@ -73,16 +73,19 @@ function SubjectDropdown({
             <DropdownMenuSubTrigger className='cursor-pointer'>{cat.label}</DropdownMenuSubTrigger>
             <DropdownMenuPortal>
               <DropdownMenuSubContent className='w-48'>
-                {cat.items.map((item) => (
-                  <DropdownMenuItem key={item.slug} asChild>
-                    <Link
-                      href={`${href}?subject=${encodeURIComponent(item.slug)}`}
-                      className='w-full cursor-pointer'
-                    >
-                      {item.name}
-                    </Link>
-                  </DropdownMenuItem>
-                ))}
+                {cat.items.map((item) => {
+                  const paramName = href === '/tutors' ? 'subjects' : 'subjectId';
+                  return (
+                    <DropdownMenuItem key={`${cat.label}-${item.id || item.slug}`} asChild>
+                      <Link
+                        href={`${href}?${paramName}=${item.id}`}
+                        className='w-full cursor-pointer'
+                      >
+                        {item.name}
+                      </Link>
+                    </DropdownMenuItem>
+                  );
+                })}
               </DropdownMenuSubContent>
             </DropdownMenuPortal>
           </DropdownMenuSub>
@@ -108,7 +111,7 @@ export function PublicHeader() {
       .then((res) => {
         const cats: NavCategory[] = (res.data ?? []).map((parent) => ({
           label: parent.name,
-          items: (parent.children ?? []).map((child) => ({ name: child.name, slug: child.slug }))
+          items: (parent.children ?? []).map((child) => ({ name: child.name, slug: child.slug, id: child.id }))
         }));
         setSubjectCategories(cats);
       })
