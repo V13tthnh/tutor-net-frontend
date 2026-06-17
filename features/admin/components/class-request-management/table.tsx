@@ -537,8 +537,7 @@ export function ClassRequestManagementTable() {
                               variant="ghost"
                               className="h-8 w-8 p-0"
                               onClick={() => {
-                                setSelectedRequest(request);
-                                setDetailOpen(true);
+                                router.push(`/admin/class-requests/${request.id}`);
                               }}
                             >
                               <Eye className="h-4 w-4" />

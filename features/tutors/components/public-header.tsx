@@ -161,7 +161,7 @@ export function PublicHeader() {
                 });
                 return;
               }
-              window.location.href = `/account/${user.email.split('@')[0]}/new-cv`;
+              window.location.href = `/account/new-cv`;
             }}
             className={cn(
               'flex items-center gap-1.5 rounded px-2.5 py-1 text-xs font-medium transition-colors cursor-pointer',
@@ -265,13 +265,13 @@ export function PublicHeader() {
                     </p>
                   </div>
                   <DropdownMenuItem asChild className='cursor-pointer'>
-                    <Link href={`/account/${user.email.split('@')[0]}`}>
+                    <Link href={`/account`}>
                       <Icons.account className='mr-2 h-4 w-4' />
                       Trang cá nhân
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild className='cursor-pointer'>
-                    <Link href={`/account/${user.email.split('@')[0]}/notifications`}>
+                    <Link href={`/account/notifications`}>
                       <Icons.notification className='mr-2 h-4 w-4' />
                       Thông báo
                     </Link>
@@ -363,7 +363,7 @@ export function PublicHeader() {
                   <p className='text-xs text-muted-foreground'>{user.email}</p>
                 </div>
               </div>
-              <Link href={`/account/${user.email.split('@')[0]}`} onClick={() => setMobileOpen(false)}>
+              <Link href={`/account`} onClick={() => setMobileOpen(false)}>
                 <Button variant='outline' className='w-full justify-start gap-2 h-10'>
                   <Icons.account size={16} />
                   Trang cá nhân

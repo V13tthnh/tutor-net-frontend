@@ -526,8 +526,8 @@ export default function ProfilePage() {
   const roleText = user?.roles.includes('tutor')
     ? 'Gia sư'
     : user?.roles.includes('parent')
-    ? 'Phụ huynh'
-    : 'Học sinh';
+      ? 'Phụ huynh'
+      : 'Học sinh';
 
   return (
     <div className='space-y-6'>
