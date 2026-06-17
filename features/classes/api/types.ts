@@ -55,3 +55,52 @@ export type ClassRequestsResponse = {
   };
   timestamp: string;
 };
+
+export interface PageResponse<T> {
+  content: T[];
+  totalPages: number;
+  totalElements: number;
+  size: number;
+  number: number;
+  first: boolean;
+  last: boolean;
+}
+
+export interface ClassRequestOwnResponse {
+  id: number;
+  classCode: string;
+  subjectName: string;
+  gradeLevel: string;
+  proposedPrice: number;
+  hourlyRate: number | null;
+  teachingMode: 'ONLINE' | 'OFFLINE' | 'HYBRID';
+  sessionsPerWeek: number;
+  status: 'PENDING' | 'APPROVED' | 'MATCHED' | 'REJECTED' | 'CANCELLED' | 'PROCESSING' | string;
+  createdAt: string;
+  applicantsCount: number;
+}
+
+export interface ClassRequestOwnFilters {
+  page?: number;
+  limit?: number;
+  keyword?: string;
+  status?: string;
+  sortBy?: string;
+  sortDir?: string;
+}
+
+export interface ClassApplicationResponse {
+  id: number;
+  classRequestId: number;
+  tutorId: number;
+  tutorName: string;
+  tutorAvatarUrl: string | null;
+  university: string;
+  major: string;
+  headline: string | null;
+  experienceYears: number | null;
+  status: 'PENDING' | 'ACCEPTED' | 'REJECTED';
+  message: string | null;
+  appliedAt: string;
+}
+

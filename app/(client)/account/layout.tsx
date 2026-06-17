@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { usePathname, useParams, useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
@@ -16,9 +16,7 @@ import { getAvatarUrl } from '@/lib/utils';
 
 export default function AccountLayout({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();
-    const params = useParams();
     const router = useRouter();
-    const routeUsername = params.username as string;
 
     const { user, loading } = useAuthSession();
     const [avatarSrc, setAvatarSrc] = useState('');
@@ -30,16 +28,9 @@ export default function AccountLayout({ children }: { children: React.ReactNode 
                 return;
             }
 
-            const allowedUsername = user.email.split('@')[0];
-
-            if (routeUsername && routeUsername !== allowedUsername) {
-                router.replace(pathname.replace(`/account/${routeUsername}`, `/account/${allowedUsername}`));
-                return;
-            }
-
             setAvatarSrc(getAvatarUrl(user.avatarUrl) || 'https://api.dicebear.com/7.x/avataaars/svg?seed=user-an');
         }
-    }, [user, loading, routeUsername, pathname, router]);
+    }, [user, loading, pathname, router]);
 
     if (loading || !user) {
         return (
@@ -52,19 +43,17 @@ export default function AccountLayout({ children }: { children: React.ReactNode 
         );
     }
 
-    const allowedUsername = user.email.split('@')[0];
-
     const TABS = [
-        { id: 'profile', label: 'Hồ sơ', icon: <Icons.user size={16} />, href: `/account/${allowedUsername}` },
-        { id: 'notifications', label: 'Thông báo', icon: <Icons.notification size={16} />, href: `/account/${allowedUsername}/notifications` },
+        { id: 'profile', label: 'Hồ sơ', icon: <Icons.user size={16} />, href: `/account` },
+        { id: 'notifications', label: 'Thông báo', icon: <Icons.notification size={16} />, href: `/account/notifications` },
         ...(user.roles.includes('tutor') ? [
-            { id: 'invitations', label: 'Lời mời dạy', icon: <Icons.email size={16} />, href: `/account/${allowedUsername}/invitations` }
+            { id: 'invitations', label: 'Lời mời dạy', icon: <Icons.email size={16} />, href: `/account/invitations` }
         ] : []),
-        { id: 'add-cv', label: 'Đăng ký làm gia sư', icon: <Icons.cv size={16} />, href: `/account/${allowedUsername}/new-cv` },
-        // { id: 'add-class', label: 'Đăng lớp', icon: <Icons.class size={16} />, href: `/account/${allowedUsername}/new-class` },
-        { id: 'my-classes', label: 'Lớp của tôi', icon: <Icons.class size={16} />, href: `/account/${allowedUsername}/new-class` },
-        { id: 'history', label: 'Yêu cầu tìm gia sư', icon: <Icons.history size={16} />, href: `/account/${allowedUsername}/history` },
-        { id: 'security', label: 'Bảo mật', icon: <Icons.lock size={16} />, href: `/account/${allowedUsername}/security` },
+        { id: 'new-cv', label: 'Đăng ký làm gia sư', icon: <Icons.cv size={16} />, href: `/account/new-cv` },
+        { id: 'my-classes', label: 'Lớp của tôi', icon: <Icons.class size={16} />, href: `/account/my-classes` },
+        { id: 'contracts', label: 'Hợp đồng của tôi', icon: <Icons.forms size={16} />, href: `/account/contracts` },
+        { id: 'history', label: 'Yêu cầu tìm gia sư', icon: <Icons.history size={16} />, href: `/account/history` },
+        { id: 'security', label: 'Bảo mật', icon: <Icons.lock size={16} />, href: `/account/security` },
     ];
 
     return (
@@ -79,7 +68,7 @@ export default function AccountLayout({ children }: { children: React.ReactNode 
                         <Icons.chevronRight size={12} />
                         <Link href='/' className='hover:text-primary transition-colors'>Tài khoản</Link>
                         <Icons.chevronRight size={12} />
-                        <span className='text-foreground font-medium'>{allowedUsername}</span>
+                        <span className='text-foreground font-medium'>{user.fullName}</span>
                     </nav>
                 </ScrollReveal>
 

@@ -109,7 +109,11 @@ export async function apiClient<T>(endpoint: string, options?: RequestInit): Pro
       return null as T;
     }
 
-    return res.json() as Promise<T>;
+    const text = await res.text();
+    if (!text) {
+      return null as T;
+    }
+    return JSON.parse(text) as T;
   } catch (error: any) {
     if (error.name === 'TimeoutError') {
       throw new Error(`Kết nối tới API quá hạn (timeout ${DEFAULT_TIMEOUT}ms)`);
