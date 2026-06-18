@@ -1,6 +1,6 @@
 import { queryOptions } from '@tanstack/react-query';
-import { getUsers, getUserStats, getUserById, getUserFilterOptions, getUserStatuses, getAdminTutors, getAdminTutorStats, getAdminTutorFilterOptions, getAdminTutorStatuses, getAdminTutorById, getAdminClassRequests, getAdminClassRequestDetail, getClassRequestFilterOptions, getAdminTutorInvitations } from './service';
-import type { User, UserFilters, AdminTutorFilters, ClassRequestFilters, TutorInvitationFilters } from './types';
+import { getUsers, getUserStats, getUserById, getUserFilterOptions, getUserStatuses, getAdminTutors, getAdminTutorStats, getAdminTutorFilterOptions, getAdminTutorStatuses, getAdminTutorById, getAdminClassRequests, getAdminClassRequestDetail, getClassRequestFilterOptions, getAdminTutorInvitations, getAdminApplicationsForClass, getAdminContracts } from './service';
+import type { User, UserFilters, AdminTutorFilters, ClassRequestFilters, TutorInvitationFilters, AdminContractFilters } from './types';
 
 export type { User };
 
@@ -101,6 +101,13 @@ export const adminClassRequestDetailOptions = (id: number) =>
     enabled: !!id
   });
 
+export const adminClassApplicationsQueryOptions = (classRequestId: number) =>
+  queryOptions({
+    queryKey: [...classRequestKeys.all, classRequestId, 'applications'],
+    queryFn: () => getAdminApplicationsForClass(classRequestId),
+    enabled: !!classRequestId
+  });
+
 export const classRequestFilterOptionsQueryOptions = () =>
   queryOptions({
     queryKey: classRequestKeys.filterOptions(),
@@ -116,4 +123,15 @@ export const adminTutorInvitationsQueryOptions = (filters: TutorInvitationFilter
   queryOptions({
     queryKey: tutorInvitationKeys.list(filters),
     queryFn: () => getAdminTutorInvitations(filters)
+  });
+
+export const adminContractKeys = {
+  all: ['admin-contracts'] as const,
+  list: (filters: AdminContractFilters) => [...adminContractKeys.all, 'list', filters] as const,
+};
+
+export const adminContractsQueryOptions = (filters: AdminContractFilters) =>
+  queryOptions({
+    queryKey: adminContractKeys.list(filters),
+    queryFn: () => getAdminContracts(filters)
   });

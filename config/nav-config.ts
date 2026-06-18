@@ -22,20 +22,27 @@ export const navGroups: NavGroup[] = [
     label: 'Người dùng',
     items: [
       {
-        title: 'Học viên',
-        url: '/admin/students',
-        icon: 'teams',
-        shortcut: ['u', 'u'],
-        isActive: false,
-        items: []
-      },
-      {
         title: 'Gia sư',
-        url: '/admin/tutors',
+        url: '#',
         icon: 'user',
-        shortcut: ['g', 's'],
         isActive: false,
-        items: []
+        items: [
+          {
+            title: 'Danh sách gia sư',
+            url: '/admin/tutors',
+            icon: 'list',
+            shortcut: ['c', 'c'],
+            isActive: false,
+
+          },
+          {
+            title: 'Danh sách lời mời',
+            url: '/admin/tutor-invitations',
+            icon: 'send',
+            shortcut: ['t', 'i'],
+            isActive: false,
+          },
+        ]
       }
     ]
   },
@@ -55,13 +62,6 @@ export const navGroups: NavGroup[] = [
             shortcut: ['c', 'c'],
             isActive: false,
 
-          },
-          {
-            title: 'Lời mời Gia sư',
-            url: '/admin/tutor-invitations',
-            icon: 'send',
-            shortcut: ['t', 'i'],
-            isActive: false,
           },
           {
             title: 'Môn học',
@@ -101,6 +101,13 @@ export const navGroups: NavGroup[] = [
             items: []
           },
           {
+            title: 'Quản lý Hợp đồng',
+            url: '/admin/contracts',
+            icon: 'page',
+            shortcut: ['c', 'h'],
+            isActive: false,
+          },
+          {
             title: 'Khoản thanh toán',
             url: '/admin/payments/payout',
             icon: 'payment',
@@ -121,65 +128,6 @@ export const navGroups: NavGroup[] = [
 
     ]
   },
-  // {
-  //   label: '',
-  //   items: [
-  //     {
-  //       title: 'Bài viết',
-  //       url: '#',
-  //       icon: 'article',
-  //       isActive: true,
-  //       items: [
-  //         {
-  //           title: 'Tất cả bài viết',
-  //           url: '/admin/blogs/post',
-  //           icon: 'post',
-  //           shortcut: ['p', 'p']
-  //         },
-  //         {
-  //           title: 'Danh mục',
-  //           url: '/admin/blogs/category',
-  //           icon: 'category',
-  //           shortcut: ['c', 'c']
-  //         },
-  //         {
-  //           title: 'Thẻ',
-  //           url: '/admin/blogs/tag',
-  //           icon: 'tag',
-  //           shortcut: ['t', 't']
-  //         },
-  //         {
-  //           title: 'Bình luận',
-  //           shortcut: ['l', 'l'],
-  //           url: '/admin/blogs/comment',
-  //           icon: 'comment'
-  //         },
-  //         {
-  //           title: 'Báo cáo',
-  //           shortcut: ['r', 'r'],
-  //           url: '/admin/blogs/report',
-  //           icon: 'report'
-  //         }
-  //       ]
-  //     },
-  //     {
-  //       title: 'Media',
-  //       url: '/admin/media',
-  //       icon: 'media',
-  //       shortcut: ['m', 'm'],
-  //       isActive: false,
-  //       items: []
-  //     },
-  //     {
-  //       title: 'Chương trình giảm giá',
-  //       url: '/admin/coupons',
-  //       icon: 'tag',
-  //       shortcut: ['c', 'o'],
-  //       isActive: false,
-  //       items: []
-  //     }
-  //   ]
-  // },
   {
     label: 'Hệ thống',
     items: [

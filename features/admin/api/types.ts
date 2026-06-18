@@ -404,3 +404,67 @@ export type TutorInvitationsPageResponse = {
 export type AdminCancelInvitationRequest = {
   cancelReason: string;
 };
+
+// ──── Admin Contract Types ───────────────────────────────────────────────
+
+export type AdminContractStatus = 'DRAFT' | 'PENDING_SIGNATURE' | 'ACTIVE' | 'COMPLETED' | 'CANCELLED' | 'VIOLATED';
+
+export type AdminContractResponse = {
+  id: number;
+  contractNumber: string;
+  classCode: string;
+  subjectName: string;
+
+  // Tutor info
+  tutorId: number;
+  tutorName: string;
+  tutorPhone: string;
+  tutorEmail: string;
+
+  // Student/Parent info
+  contactName: string;
+  contactPhone: string;
+
+  // Finance
+  introductionFee: number;
+  isFeePaid: boolean;
+  paidAt: string | null;
+  feePaymentDeadline: string;
+
+  // Status & Legal
+  status: AdminContractStatus;
+  signedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+  contractFileUrl?: string;
+};
+
+export type AdminContractFilters = {
+  page?: number;
+  limit?: number;
+  keyword?: string;
+  status?: AdminContractStatus;
+  isFeePaid?: boolean;
+  sortBy?: string;
+  sortDir?: string;
+};
+
+export type AdminContractsPageResponse = {
+  success: boolean;
+  message: string;
+  data: {
+    content: AdminContractResponse[];
+    page: number;
+    size: number;
+    totalElements: number;
+    totalPages: number;
+    last: boolean;
+  };
+  timestamp: string;
+};
+
+export type AdminContractDisputeRequest = {
+  status: 'CANCELLED' | 'VIOLATED';
+  reason: string;
+  refundFee: boolean;
+};

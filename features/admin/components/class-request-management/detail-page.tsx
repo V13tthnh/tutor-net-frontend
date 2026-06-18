@@ -26,9 +26,9 @@ import {
   IconUsers,
   IconBook,
 } from '@tabler/icons-react';
-import { adminClassRequestDetailOptions } from '../../api/queries';
-import { classApplicationsQueryOptions } from '@/features/classes/api/queries';
+import { adminClassRequestDetailOptions, adminClassApplicationsQueryOptions } from '../../api/queries';
 import { acceptApplication } from '@/features/classes/api/service';
+import { hideApplication } from '../../api/service';
 import { ReviewDialog } from './review-dialog';
 import {
   Dialog,
@@ -67,7 +67,7 @@ export function ClassRequestDetailPage({ classRequestId }: ClassRequestDetailPag
 
   // Fetch Applications List
   const { data: appsData, isLoading: appsLoading } = useQuery(
-    classApplicationsQueryOptions(classRequestId)
+    adminClassApplicationsQueryOptions(classRequestId)
   );
 
   const applicants = appsData?.data || [];
@@ -93,9 +93,15 @@ export function ClassRequestDetailPage({ classRequestId }: ClassRequestDetailPag
     }
   };
 
-  const handleHideApplication = (appId: number) => {
-    setHiddenAppIds((prev) => [...prev, appId]);
-    toast.success('Đã ẩn đơn ứng tuyển vi phạm chính sách.');
+  const handleHideApplication = async (appId: number) => {
+    try {
+      const res = await hideApplication(classRequestId, appId);
+      toast.success(res.message || 'Đã ẩn đơn ứng tuyển thành công.');
+      queryClient.invalidateQueries({ queryKey: ['admin-class-requests'] });
+    } catch (err: unknown) {
+      const error = err as Error;
+      toast.error(error.message || 'Có lỗi xảy ra khi ẩn đơn ứng tuyển.');
+    }
   };
 
   if (requestLoading) {
