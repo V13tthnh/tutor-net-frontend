@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { useDebounce } from '@/hooks/use-debounce';
@@ -120,6 +120,27 @@ function StatusBadge({ status }: { status: ContractStatus }) {
   );
 }
 
+// ─── VNPAY Response Code descriptions ───────────────────────────────────────
+const VNPAY_ERROR_MESSAGES: Record<string, string> = {
+  '01': 'Giao dịch chưa hoàn tất.',
+  '02': 'Giao dịch bị lỗi.',
+  '04': 'Giao dịch đảo (Khách hàng đã bị trừ tiền tại Ngân hàng nhưng GD chưa thành công ở VNPAY).',
+  '05': 'VNPAY đang xử lý giao dịch này (tự động hoàn tiền trong 3-5 ngày).',
+  '06': 'VNPAY đã gửi yêu cầu hoàn tiền sang Ngân hàng nhưng chưa được phản hồi.',
+  '07': 'Giao dịch bị nghi ngờ gian lận.',
+  '09': 'Thẻ/Tài khoản của khách hàng chưa đăng ký dịch vụ InternetBanking.',
+  '10': 'Khách hàng xác thực thông tin thẻ/tài khoản không đúng quá 3 lần.',
+  '11': 'Đã hết hạn chờ thanh toán. Vui lòng thực hiện lại giao dịch.',
+  '12': 'Thẻ/Tài khoản của khách hàng bị khóa.',
+  '13': 'Quý khách nhập sai mật khẩu xác thực giao dịch (OTP).',
+  '24': 'Giao dịch đã bị hủy.',
+  '51': 'Tài khoản không đủ số dư để thực hiện giao dịch.',
+  '65': 'Tài khoản của Quý khách đã vượt quá hạn mức giao dịch trong ngày.',
+  '75': 'Ngân hàng thanh toán đang bảo trì.',
+  '79': 'Quý khách nhập sai mật khẩu thanh toán quá số lần quy định.',
+  '99': 'Lỗi không xác định từ hệ thống.',
+};
+
 export default function MyContractsList() {
   const queryClient = useQueryClient();
   const { user } = useAuthSession();
@@ -128,6 +149,72 @@ export default function MyContractsList() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+
+  // ─── Handle VNPay return URL ──────────────────────────────────────────────
+  const vnpayHandled = useRef(false);
+  useEffect(() => {
+    // Guard against double-fire in React StrictMode
+    if (vnpayHandled.current) return;
+
+    const responseCode = searchParams.get('vnp_ResponseCode');
+    // Only run if there are VNPay params present
+    if (!responseCode) return;
+
+    vnpayHandled.current = true;
+
+    const txnRef = searchParams.get('vnp_TxnRef') || '';
+    const orderInfo = searchParams.get('vnp_OrderInfo') || '';
+    const rawAmount = searchParams.get('vnp_Amount') || '0';
+    // VNPay amount is multiplied by 100
+    const amount = (parseInt(rawAmount, 10) / 100).toLocaleString('vi-VN') + ' đ';
+    const bankCode = searchParams.get('vnp_BankCode') || '';
+    const transactionNo = searchParams.get('vnp_TransactionNo') || '';
+
+    if (responseCode === '00') {
+      // ✅ Success
+      toast.success('Thanh toán hợp đồng thành công!', {
+        description: (
+          <div className="space-y-1 text-xs mt-1">
+            <div><span className="font-semibold">Mã giao dịch:</span> {txnRef}</div>
+            <div><span className="font-semibold">Số GD ngân hàng:</span> {transactionNo}</div>
+            <div><span className="font-semibold">Số tiền:</span> {amount}</div>
+            {bankCode && <div><span className="font-semibold">Ngân hàng:</span> {bankCode}</div>}
+            {orderInfo && <div className="text-muted-foreground">{decodeURIComponent(orderInfo.replace(/\+/g, ' '))}</div>}
+          </div>
+        ),
+        duration: 8000,
+      });
+      // Refresh the contracts list to show updated status
+      queryClient.invalidateQueries({ queryKey: ['contracts'] });
+    } else if (responseCode === '24') {
+      // 🔶 User cancelled
+      toast.warning('Giao dịch đã bị hủy', {
+        description: 'Bạn đã hủy thanh toán. Không có khoản nào bị trừ.',
+        duration: 5000,
+      });
+    } else {
+      // ❌ Payment failed
+      const reason = VNPAY_ERROR_MESSAGES[responseCode] ?? `Lỗi không xác định (mã: ${responseCode}).`;
+      toast.error('Thanh toán không thành công', {
+        description: (
+          <div className="space-y-1 text-xs mt-1">
+            <div>{reason}</div>
+            {txnRef && <div><span className="font-semibold">Mã GD:</span> {txnRef}</div>}
+          </div>
+        ),
+        duration: 7000,
+      });
+    }
+
+    // 🧹 Strip all vnp_* params from the URL to keep it clean
+    const cleanParams = new URLSearchParams(searchParams.toString());
+    cleanParams.forEach((_val, key) => {
+      if (key.startsWith('vnp_')) cleanParams.delete(key);
+    });
+    const cleanQuery = cleanParams.toString();
+    router.replace(`${pathname}${cleanQuery ? `?${cleanQuery}` : ''}`, { scroll: false });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Local state for search query synced to URL parameter
   const [search, setSearch] = useState(() => searchParams.get('keyword') || '');

@@ -461,6 +461,8 @@ export async function getAdminTutorById(id: number): Promise<AdminTutorDetail> {
 // ──── Class Request Management ───────────────────────────────────────────
 
 import type { ClassRequestFilters, ClassRequestsPageResponse, ClassRequestResponse, ReviewClassRequest, ClassRequestFilterOptions } from './types';
+import type { ClassApplicationResponse } from '@/features/classes/api/types';
+import type { AdminContractFilters, AdminContractsPageResponse, AdminContractResponse, AdminContractDisputeRequest, AdminContractStatus } from './types';
 
 // ─── Get class requests list ────────────────────────────────────────────
 export async function getAdminClassRequests(filters: ClassRequestFilters): Promise<ClassRequestsPageResponse> {
@@ -496,6 +498,38 @@ export async function getAdminClassRequestDetail(id: number): Promise<ClassReque
   }
 
   return res.data;
+}
+
+// ─── Get applications list for a class request (admin) ─────────────────
+export async function getAdminApplicationsForClass(
+  classRequestId: number
+): Promise<{ success: boolean; data: ClassApplicationResponse[] }> {
+  const res = await apiClient<{ success: boolean; data: ClassApplicationResponse[]; message?: string }>(
+    `/admin/class-requests/${classRequestId}/applications`,
+    {
+      cache: 'no-store'
+    }
+  );
+
+  if (!res.success || !res.data) {
+    throw new Error(res.message || 'Lỗi lấy danh sách ứng tuyển');
+  }
+
+  return res;
+}
+
+// ─── Hide application (admin) ───────────────────────────────────────────
+export async function hideApplication(
+  classRequestId: number,
+  applicationId: number
+): Promise<{ success: boolean; message: string; data: ClassApplicationResponse }> {
+  const res = await apiClient<{ success: boolean; message: string; data: ClassApplicationResponse }>(
+    `/admin/class-requests/${classRequestId}/applications/${applicationId}/hide`,
+    {
+      method: 'PATCH'
+    }
+  );
+  return res;
 }
 
 // ─── Approve/Reject class request ───────────────────────────────────────
@@ -581,6 +615,90 @@ export async function forceCancelTutorInvitation(id: number, data: AdminCancelIn
 
   if (!res.success) {
     throw new Error(res.message || 'Lỗi hủy lời mời');
+  }
+
+  return res;
+}
+
+// ─── Contract Administration ─────────────────────────────────────────────
+
+export async function getAdminContracts(
+  filters: AdminContractFilters
+): Promise<AdminContractsPageResponse> {
+  const params = new URLSearchParams();
+
+  if (filters.page !== undefined) params.append('page', String(filters.page));
+  if (filters.limit !== undefined) params.append('size', String(filters.limit));
+  if (filters.keyword !== undefined) params.append('keyword', filters.keyword);
+  if (filters.status !== undefined) params.append('status', filters.status);
+  if (filters.isFeePaid !== undefined) params.append('isFeePaid', String(filters.isFeePaid));
+  if (filters.sortBy !== undefined) params.append('sortBy', filters.sortBy);
+  if (filters.sortDir !== undefined) params.append('sortDir', filters.sortDir);
+
+  const res = await apiClient<AdminContractsPageResponse>(`/admin/contracts?${params.toString()}`, {
+    cache: 'no-store'
+  });
+
+  if (!res.success) {
+    throw new Error(res.message || 'Lỗi lấy danh sách hợp đồng');
+  }
+
+  return res;
+}
+
+export async function confirmContractPayment(
+  contractId: number
+): Promise<{ success: boolean; message: string }> {
+  const res = await apiClient<{ success: boolean; message: string }>(
+    `/admin/contracts/${contractId}/confirm-payment`,
+    {
+      method: 'POST'
+    }
+  );
+
+  if (!res.success) {
+    throw new Error(res.message || 'Lỗi xác nhận thu phí');
+  }
+
+  return res;
+}
+
+export async function resolveContractDispute(
+  contractId: number,
+  data: AdminContractDisputeRequest
+): Promise<{ success: boolean; message: string }> {
+  const res = await apiClient<{ success: boolean; message: string }>(
+    `/admin/contracts/${contractId}/dispute`,
+    {
+      method: 'POST',
+      body: JSON.stringify(data)
+    }
+  );
+
+  if (!res.success) {
+    throw new Error(res.message || 'Lỗi xử lý tranh chấp hợp đồng');
+  }
+
+  return res;
+}
+
+export async function getContractsForExport(
+  status?: AdminContractStatus,
+  isFeePaid?: boolean
+): Promise<{ success: boolean; message: string; data: AdminContractResponse[] }> {
+  const params = new URLSearchParams();
+  if (status !== undefined) params.append('status', status);
+  if (isFeePaid !== undefined) params.append('isFeePaid', String(isFeePaid));
+
+  const res = await apiClient<{ success: boolean; message: string; data: AdminContractResponse[] }>(
+    `/admin/contracts/export?${params.toString()}`,
+    {
+      cache: 'no-store'
+    }
+  );
+
+  if (!res.success) {
+    throw new Error(res.message || 'Lỗi xuất dữ liệu đối soát');
   }
 
   return res;

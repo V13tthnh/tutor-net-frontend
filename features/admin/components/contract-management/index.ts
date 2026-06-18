@@ -1,0 +1,1 @@
+export { ContractManagementPage } from './page';
