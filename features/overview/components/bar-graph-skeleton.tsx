@@ -13,15 +13,18 @@ export function BarGraphSkeleton() {
       </CardHeader>
       <CardContent>
         <div className='flex aspect-auto h-[280px] w-full items-end justify-around gap-2 pt-8'>
-          {Array.from({ length: 12 }).map((_, i) => (
-            <Skeleton
-              key={i}
-              className='w-full rounded-t-sm'
-              style={{
-                height: `${Math.max(20, Math.random() * 100)}%`
-              }}
-            />
-          ))}
+          {Array.from({ length: 12 }).map((_, i) => {
+            const height = ((i * 7 + 3) % 8) * 10 + 20; // 20% to 90% deterministic heights
+            return (
+              <Skeleton
+                key={i}
+                className='w-full rounded-t-sm'
+                style={{
+                  height: `${height}%`
+                }}
+              />
+            );
+          })}
         </div>
       </CardContent>
     </Card>

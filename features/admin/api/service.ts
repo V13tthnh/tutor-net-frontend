@@ -703,3 +703,74 @@ export async function getContractsForExport(
 
   return res;
 }
+
+// ─── Transaction Management API calls ──────────────────────────────────────────
+
+import type { TransactionFilters, AdminTransactionsPageResponse, TransactionResponse, TransactionSummaryResponse } from './types';
+
+export async function getTransactions(
+  filters: TransactionFilters
+): Promise<AdminTransactionsPageResponse> {
+  const params = new URLSearchParams();
+
+  if (filters.page !== undefined) params.append('page', String(filters.page));
+  if (filters.limit !== undefined) params.append('size', String(filters.limit));
+  if (filters.status) params.append('status', filters.status);
+  if (filters.paymentMethod) params.append('paymentMethod', filters.paymentMethod);
+  if (filters.search) params.append('search', filters.search);
+  if (filters.fromDate) params.append('fromDate', filters.fromDate);
+  if (filters.toDate) params.append('toDate', filters.toDate);
+
+  const res = await apiClient<AdminTransactionsPageResponse>(`/admin/transactions?${params.toString()}`, {
+    cache: 'no-store'
+  });
+
+  if (!res.success) {
+    throw new Error(res.message || 'Lỗi lấy danh sách giao dịch');
+  }
+
+  return res;
+}
+
+export async function getTransactionSummary(
+  filters: TransactionFilters
+): Promise<{ success: boolean; data: TransactionSummaryResponse; message?: string }> {
+  const params = new URLSearchParams();
+
+  if (filters.status) params.append('status', filters.status);
+  if (filters.paymentMethod) params.append('paymentMethod', filters.paymentMethod);
+  if (filters.search) params.append('search', filters.search);
+  if (filters.fromDate) params.append('fromDate', filters.fromDate);
+  if (filters.toDate) params.append('toDate', filters.toDate);
+
+  const res = await apiClient<{ success: boolean; data: TransactionSummaryResponse; message?: string }>(
+    `/admin/transactions/summary?${params.toString()}`,
+    {
+      cache: 'no-store'
+    }
+  );
+
+  if (!res.success || !res.data) {
+    throw new Error(res.message || 'Lỗi lấy tổng hợp giao dịch');
+  }
+
+  return res;
+}
+
+export async function getTransactionById(
+  id: number
+): Promise<{ success: boolean; data: TransactionResponse; message?: string }> {
+  const res = await apiClient<{ success: boolean; data: TransactionResponse; message?: string }>(
+    `/admin/transactions/${id}`,
+    {
+      cache: 'no-store'
+    }
+  );
+
+  if (!res.success || !res.data) {
+    throw new Error(res.message || 'Lỗi lấy chi tiết giao dịch');
+  }
+
+  return res;
+}
+

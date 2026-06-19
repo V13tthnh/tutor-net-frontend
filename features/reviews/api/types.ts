@@ -1,3 +1,4 @@
+// ─── Legacy types (kept for tutor-reviews-tab / session-listing) ────────────
 export type SessionStatus = 'pending' | 'confirmed' | 'ongoing' | 'completed' | 'cancelled';
 
 export interface Session {
@@ -58,4 +59,38 @@ export interface TogglePublicPayload {
 export interface SessionsFilters {
   role?: string;
   userId?: number;
+}
+
+// ─── Real backend AdminReviewResponse ────────────────────────────────────────
+// Matches: GET /api/v1/admin/reviews (AdminReviewController)
+export interface AdminReviewResponse {
+  id: number;
+  /** Mã hợp đồng liên quan, ví dụ: "HD-2026-42667A2B" */
+  contractNumber: string;
+  /** ID hợp đồng để link sang trang chi tiết */
+  contractId: number;
+  /** Tên gia sư */
+  tutorName: string;
+  /** Email gia sư */
+  tutorEmail: string;
+  /** Tên người đánh giá (null nếu là khách vãng lai) */
+  reviewerName: string | null;
+  /** Nếu là khách vãng lai (Magic Link), trường này = true */
+  isGuestReview: boolean;
+  /** Số sao: 1-5 */
+  rating: number;
+  /** Nội dung nhận xét */
+  comment: string;
+  /** true = hiển thị công khai, false = đã ẩn */
+  isPublic: boolean;
+  /** ISO timestamp */
+  createdAt: string;
+}
+
+export interface AdminReviewFilters {
+  rating?: number;
+  isPublic?: boolean;
+  search?: string;
+  page?: number;
+  size?: number;
 }
