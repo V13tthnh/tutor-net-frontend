@@ -468,3 +468,60 @@ export type AdminContractDisputeRequest = {
   reason: string;
   refundFee: boolean;
 };
+
+// ──── Admin Transaction Types ─────────────────────────────────────────────
+
+export type TransactionStatus = 'PENDING' | 'SUCCESS' | 'FAILED' | 'CANCELLED' | 'REFUNDED';
+
+export type PaymentMethod = 'VNPAY' | 'PAYOS' | 'BANK_TRANSFER';
+
+export type TransactionResponse = {
+  id: number;
+  transactionCode: string;
+  gatewayReference: string | null;
+  contractId: number | null;
+  contractNumber: string | null;
+  userId: number;
+  tutorName: string;
+  tutorEmail: string;
+  amount: number;
+  paymentMethod: PaymentMethod;
+  status: TransactionStatus;
+  note: string | null;
+  paidAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type TransactionSummaryResponse = {
+  totalCount: number;
+  successCount: number;
+  pendingCount: number;
+  failedCount: number;
+  totalRevenue: number;
+};
+
+export type TransactionFilters = {
+  page?: number;
+  limit?: number;
+  status?: TransactionStatus;
+  paymentMethod?: PaymentMethod;
+  search?: string;
+  fromDate?: string;
+  toDate?: string;
+};
+
+export type AdminTransactionsPageResponse = {
+  success: boolean;
+  message: string;
+  data: {
+    content: TransactionResponse[];
+    page: number;
+    size: number;
+    totalElements: number;
+    totalPages: number;
+    last: boolean;
+  };
+  timestamp: string;
+};
+

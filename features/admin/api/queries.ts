@@ -135,3 +135,35 @@ export const adminContractsQueryOptions = (filters: AdminContractFilters) =>
     queryKey: adminContractKeys.list(filters),
     queryFn: () => getAdminContracts(filters)
   });
+
+// ─── Transaction Management Query Options ──────────────────────────────────────
+
+import { getTransactions, getTransactionSummary, getTransactionById } from './service';
+import type { TransactionFilters } from './types';
+
+export const adminTransactionKeys = {
+  all: ['admin-transactions'] as const,
+  list: (filters: TransactionFilters) => [...adminTransactionKeys.all, 'list', filters] as const,
+  summary: (filters: TransactionFilters) => [...adminTransactionKeys.all, 'summary', filters] as const,
+  detail: (id: number) => [...adminTransactionKeys.all, 'detail', id] as const,
+};
+
+export const adminTransactionsQueryOptions = (filters: TransactionFilters) =>
+  queryOptions({
+    queryKey: adminTransactionKeys.list(filters),
+    queryFn: () => getTransactions(filters)
+  });
+
+export const adminTransactionSummaryQueryOptions = (filters: TransactionFilters) =>
+  queryOptions({
+    queryKey: adminTransactionKeys.summary(filters),
+    queryFn: () => getTransactionSummary(filters).then((res) => res.data)
+  });
+
+export const adminTransactionByIdOptions = (id: number) =>
+  queryOptions({
+    queryKey: adminTransactionKeys.detail(id),
+    queryFn: () => getTransactionById(id).then((res) => res.data),
+    enabled: !!id
+  });
+
