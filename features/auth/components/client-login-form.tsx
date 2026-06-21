@@ -25,6 +25,9 @@ export default function PublicSignInPage() {
     }
   }, [state]);
 
+  const emailError    = state.fieldErrors?.email;
+  const passwordError = state.fieldErrors?.password;
+
   return (
     <div className='relative flex min-h-screen overflow-hidden bg-gradient-to-br from-slate-50 via-white to-primary/5 dark:from-gray-950 dark:via-gray-900 dark:to-primary/10'>
 
@@ -141,8 +144,10 @@ export default function PublicSignInPage() {
           </div>
 
           {/* Form */}
-          <form action={formAction} className='space-y-4'>
+          <form action={formAction} className='space-y-4' noValidate>
             {redirectTo && <input type='hidden' name='redirectTo' value={redirectTo} />}
+
+            {/* ── Email ── */}
             <div className='space-y-1.5'>
               <Label htmlFor='email'>Email</Label>
               <div className='relative'>
@@ -153,13 +158,21 @@ export default function PublicSignInPage() {
                   type='email'
                   placeholder='example@email.com'
                   autoComplete='email'
-                  className='h-11 pl-9'
+                  className={`h-11 pl-9 ${emailError ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
                   defaultValue={state.email}
-                  required
+                  aria-invalid={!!emailError}
+                  aria-describedby={emailError ? 'email-error' : undefined}
                 />
               </div>
+              {/* Field-level error — hiển thị text đỏ dưới input */}
+              {emailError && (
+                <p id='email-error' className='text-sm text-red-500' role='alert' aria-live='polite'>
+                  {emailError}
+                </p>
+              )}
             </div>
 
+            {/* ── Password ── */}
             <div className='space-y-1.5'>
               <div className='flex items-center justify-between'>
                 <Label htmlFor='password'>Mật khẩu</Label>
@@ -175,20 +188,29 @@ export default function PublicSignInPage() {
                   type={showPassword ? 'text' : 'password'}
                   placeholder='••••••••'
                   autoComplete='current-password'
-                  className='h-11 pl-9 pr-10'
-                  required
+                  className={`h-11 pl-9 pr-10 ${passwordError ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
+                  aria-invalid={!!passwordError}
+                  aria-describedby={passwordError ? 'password-error' : undefined}
                 />
                 <button
                   type='button'
                   className='absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors'
                   onClick={() => setShowPassword((v) => !v)}
                   tabIndex={-1}
+                  aria-label={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
                 >
                   {showPassword ? <Icons.eyeOff size={22} /> : <Icons.eye size={22} />}
                 </button>
               </div>
+              {/* Field-level error — hiển thị text đỏ dưới input */}
+              {passwordError && (
+                <p id='password-error' className='text-sm text-red-500' role='alert' aria-live='polite'>
+                  {passwordError}
+                </p>
+              )}
             </div>
 
+            {/* ── Lỗi chung (API error: 401, 500...) ── */}
             {state.error && (
               <p
                 className='border-destructive/30 bg-destructive/10 text-destructive rounded-md border px-3 py-2 text-sm'
@@ -246,9 +268,10 @@ export default function PublicSignInPage() {
 
 // form submit
 //   → clientLoginAction()        ← actions/client-login.ts
+//       → validateLoginInput()   ← lib/login-validation.ts (field-level)
 //       → loginClientService()   ← api/service.ts
 //           → queryClientLogin() ← api/queries.ts (POST /auth/login)
 //       → setClientSession()     ← lib/session.server.ts
 //           → cookie "client_session" { httpOnly, path: "/", maxAge: ... }
-//       → return { success: true, redirectTo: "/dashboard" }
+//       → return { success: true, redirectTo: "/" }
 //   → useEffect: window.location.href = redirectTo  ← PublicSignInPage.tsx

@@ -4,14 +4,23 @@
 import { loginAdminService } from "../api/service";
 import { setServerSession } from "../lib/session.server";
 import { AUTH_CONFIG } from "../lib/auth.config";
+import {
+  validateLoginInput,
+  validateRedirectTo,
+  sanitizeText,
+  type FieldErrors,
+} from "../lib/login-validation";
 
 // ─── State ────────────────────────────────────────────────────────────────────
 
 export interface AdminLoginState {
+  /** Lỗi chung: lỗi API (401, 403, 500...) — hiển thị dạng banner */
   error?: string;
+  /** Lỗi field-level — hiển thị text đỏ dưới từng input */
+  fieldErrors?: FieldErrors;
   success?: boolean;
   redirectTo?: string;
-  /** Giữ lại email để prefill input khi lỗi */
+  /** Giữ lại email (đã sanitize) để prefill input khi lỗi */
   email?: string;
 }
 
@@ -21,10 +30,11 @@ export interface AdminLoginState {
  * Server Action cho trang đăng nhập admin.
  *
  * Flow:
- * 1. Validate input
- * 2. Gọi POST /auth/admin/login → kiểm tra role admin/super_admin
- * 3. Serialize session → lưu vào HttpOnly cookie "admin_session"
- * 4. Trả về { success: true, redirectTo } để client redirect
+ * 1. Validate input → trả fieldErrors nếu sai format/rỗng
+ * 2. Validate redirectTo chống Open Redirect
+ * 3. Gọi POST /auth/admin/login → kiểm tra role admin/super_admin
+ * 4. Serialize session → lưu vào HttpOnly cookie "admin_session"
+ * 5. Trả về { success: true, redirectTo } để client redirect
  *
  * Lý do dùng client-side redirect (window.location.href) thay vì redirect():
  * - Form dùng useActionState → không thể dùng Next.js redirect() trong action
@@ -35,13 +45,27 @@ export async function adminLoginAction(
   _prev: AdminLoginState,
   formData: FormData
 ): Promise<AdminLoginState> {
-  const email    = (formData.get("email")      as string)?.trim() ?? "";
-  const password = (formData.get("password")   as string)         ?? "";
-  const redirectTo = (formData.get("redirectTo") as string)?.trim() || AUTH_CONFIG.ROUTES.ADMIN.DASHBOARD;
+  const emailRaw = (formData.get("email") as string) ?? "";
+  const password = (formData.get("password") as string) ?? "";
+  const rawRedirect = (formData.get("redirectTo") as string) ?? "";
 
-  // ── Validate ──────────────────────────────────────────────────────────────
-  if (!email) return { error: "Vui lòng nhập email.", email };
-  if (!password) return { error: "Vui lòng nhập mật khẩu.", email };
+  // Trim email (chuẩn hoá), KHÔNG trim password
+  const email = emailRaw.trim();
+
+  // Sanitize email để prefill an toàn (chống Reflected XSS)
+  const emailSafe = sanitizeText(email);
+
+  // ── Validate redirectTo — chặn Open Redirect ──────────────────────────────
+  const redirectTo = validateRedirectTo(rawRedirect, AUTH_CONFIG.ROUTES.ADMIN.DASHBOARD);
+
+  // ── Validate field-level ──────────────────────────────────────────────────
+  const validation = validateLoginInput(email, password);
+  if (!validation.valid) {
+    return {
+      fieldErrors: validation.fieldErrors,
+      email: emailSafe,
+    };
+  }
 
   // ── Login ─────────────────────────────────────────────────────────────────
   try {
@@ -56,8 +80,8 @@ export async function adminLoginAction(
     };
   } catch (err) {
     return {
-      error: err instanceof Error ? err.message : "Đăng nhập thất bại. Vui lòng thử lại.",
-      email, // prefill lại email
+      error: err instanceof Error ? err.message : "Đăng nhập không thành công vui lòng thử lại",
+      email: emailSafe, // prefill lại email (đã sanitize)
     };
   }
 }

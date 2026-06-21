@@ -2,14 +2,23 @@
 
 import { loginClientService } from "../api/service";
 import { setClientSession } from "../lib/session.server";
+import {
+  validateLoginInput,
+  validateRedirectTo,
+  sanitizeText,
+  type FieldErrors,
+} from "../lib/login-validation";
 
 // ─── State ────────────────────────────────────────────────────────────────────
 
 export interface ClientLoginState {
+  /** Lỗi chung: lỗi API (401, 500...) — hiển thị dạng banner */
   error?: string;
+  /** Lỗi field-level — hiển thị text đỏ dưới từng input */
+  fieldErrors?: FieldErrors;
   success?: boolean;
   redirectTo?: string;
-  /** Giữ lại email để prefill input khi lỗi */
+  /** Giữ lại email (đã sanitize) để prefill input khi lỗi */
   email?: string;
 }
 
@@ -19,25 +28,37 @@ export interface ClientLoginState {
  * Server Action cho trang đăng nhập client (tutor / student).
  *
  * Flow:
- * 1. Validate input
- * 2. Gọi POST /auth/login
- * 3. Serialize session → lưu vào HttpOnly cookie "client_session"
- * 4. Trả về { success: true, redirectTo } để client redirect
+ * 1. Validate input → trả fieldErrors nếu sai format/rỗng
+ * 2. Validate redirectTo chống Open Redirect
+ * 3. Gọi POST /auth/login
+ * 4. Serialize session → lưu vào HttpOnly cookie "client_session"
+ * 5. Trả về { success: true, redirectTo } để client redirect
  */
 export async function clientLoginAction(
   _prev: ClientLoginState,
   formData: FormData
 ): Promise<ClientLoginState> {
-  const email    = (formData.get("email")      as string)?.trim() ?? "";
-  const password = (formData.get("password")   as string)         ?? "";
+  const emailRaw = (formData.get("email") as string) ?? "";
+  const password = (formData.get("password") as string) ?? "";
+  const rawRedirect = (formData.get("redirectTo") as string) ?? "";
 
-  // Đọc redirectTo từ hidden input hoặc fallback về /
-  const redirectTo =
-    (formData.get("redirectTo") as string)?.trim() || "/";
+  // Trim email (chuẩn hoá), KHÔNG trim password
+  const email = emailRaw.trim();
 
-  // ── Validate ──────────────────────────────────────────────────────────────
-  if (!email) return { error: "Vui lòng nhập email.", email };
-  if (!password) return { error: "Vui lòng nhập mật khẩu.", email };
+  // Sanitize email để prefill an toàn (chống Reflected XSS)
+  const emailSafe = sanitizeText(email);
+
+  // ── Validate redirectTo — chặn Open Redirect ──────────────────────────────
+  const redirectTo = validateRedirectTo(rawRedirect, "/");
+
+  // ── Validate field-level ──────────────────────────────────────────────────
+  const validation = validateLoginInput(email, password);
+  if (!validation.valid) {
+    return {
+      fieldErrors: validation.fieldErrors,
+      email: emailSafe,
+    };
+  }
 
   // ── Login ─────────────────────────────────────────────────────────────────
   try {
@@ -52,8 +73,8 @@ export async function clientLoginAction(
     };
   } catch (err) {
     return {
-      error: err instanceof Error ? err.message : "Đăng nhập thất bại. Vui lòng thử lại.",
-      email,
+      error: err instanceof Error ? err.message : "Đăng nhập không thành công vui lòng thử lại",
+      email: emailSafe,
     };
   }
 }

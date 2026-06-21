@@ -685,23 +685,18 @@ export async function resolveContractDispute(
 export async function getContractsForExport(
   status?: AdminContractStatus,
   isFeePaid?: boolean
-): Promise<{ success: boolean; message: string; data: AdminContractResponse[] }> {
+): Promise<Blob> {
   const params = new URLSearchParams();
   if (status !== undefined) params.append('status', status);
   if (isFeePaid !== undefined) params.append('isFeePaid', String(isFeePaid));
 
-  const res = await apiClient<{ success: boolean; message: string; data: AdminContractResponse[] }>(
-    `/admin/contracts/export?${params.toString()}`,
+  return apiClient<Blob>(
+    `/admin/contracts/export-excel?${params.toString()}`,
     {
-      cache: 'no-store'
+      cache: 'no-store',
+      responseType: 'blob'
     }
   );
-
-  if (!res.success) {
-    throw new Error(res.message || 'Lỗi xuất dữ liệu đối soát');
-  }
-
-  return res;
 }
 
 // ─── Transaction Management API calls ──────────────────────────────────────────

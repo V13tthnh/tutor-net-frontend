@@ -23,7 +23,11 @@ function redirectToLogin() {
   window.location.href = `${loginPath}?next=${next}&reason=expired`;
 }
 
-export async function apiClient<T>(endpoint: string, options?: RequestInit): Promise<T> {
+export interface ApiClientOptions extends RequestInit {
+  responseType?: 'json' | 'blob' | 'text' | 'raw';
+}
+
+export async function apiClient<T>(endpoint: string, options?: ApiClientOptions): Promise<T> {
   const url = getApiUrl(endpoint);
 
   const headers: Record<string, string> = {};
@@ -107,6 +111,18 @@ export async function apiClient<T>(endpoint: string, options?: RequestInit): Pro
     // 204 No Content và 205 Reset Content không có body — không gọi .json()
     if (res.status === 204 || res.status === 205) {
       return null as T;
+    }
+
+    if (options?.responseType === 'blob') {
+      return (await res.blob()) as unknown as T;
+    }
+
+    if (options?.responseType === 'raw') {
+      return res as unknown as T;
+    }
+
+    if (options?.responseType === 'text') {
+      return (await res.text()) as unknown as T;
     }
 
     const text = await res.text();
