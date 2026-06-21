@@ -1,5 +1,3 @@
-// Actions tổng hợp — dùng trong các context khác (refresh, logout, register).
-// Với login, dùng actions/admin-login.ts và actions/client-login.ts trực tiếp.
 "use server";
 
 import { redirect } from "next/navigation";

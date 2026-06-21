@@ -120,27 +120,6 @@ function StatusBadge({ status }: { status: ContractStatus }) {
   );
 }
 
-// ─── VNPAY Response Code descriptions ───────────────────────────────────────
-const VNPAY_ERROR_MESSAGES: Record<string, string> = {
-  '01': 'Giao dịch chưa hoàn tất.',
-  '02': 'Giao dịch bị lỗi.',
-  '04': 'Giao dịch đảo (Khách hàng đã bị trừ tiền tại Ngân hàng nhưng GD chưa thành công ở VNPAY).',
-  '05': 'VNPAY đang xử lý giao dịch này (tự động hoàn tiền trong 3-5 ngày).',
-  '06': 'VNPAY đã gửi yêu cầu hoàn tiền sang Ngân hàng nhưng chưa được phản hồi.',
-  '07': 'Giao dịch bị nghi ngờ gian lận.',
-  '09': 'Thẻ/Tài khoản của khách hàng chưa đăng ký dịch vụ InternetBanking.',
-  '10': 'Khách hàng xác thực thông tin thẻ/tài khoản không đúng quá 3 lần.',
-  '11': 'Đã hết hạn chờ thanh toán. Vui lòng thực hiện lại giao dịch.',
-  '12': 'Thẻ/Tài khoản của khách hàng bị khóa.',
-  '13': 'Quý khách nhập sai mật khẩu xác thực giao dịch (OTP).',
-  '24': 'Giao dịch đã bị hủy.',
-  '51': 'Tài khoản không đủ số dư để thực hiện giao dịch.',
-  '65': 'Tài khoản của Quý khách đã vượt quá hạn mức giao dịch trong ngày.',
-  '75': 'Ngân hàng thanh toán đang bảo trì.',
-  '79': 'Quý khách nhập sai mật khẩu thanh toán quá số lần quy định.',
-  '99': 'Lỗi không xác định từ hệ thống.',
-};
-
 export default function MyContractsList() {
   const queryClient = useQueryClient();
   const { user } = useAuthSession();
@@ -156,61 +135,56 @@ export default function MyContractsList() {
     // Guard against double-fire in React StrictMode
     if (vnpayHandled.current) return;
 
-    const responseCode = searchParams.get('vnp_ResponseCode');
-    // Only run if there are VNPay params present
-    if (!responseCode) return;
+    const paymentStatus = searchParams.get('payment');
+    // Only run if the payment parameter is present
+    if (!paymentStatus) return;
 
     vnpayHandled.current = true;
 
-    const txnRef = searchParams.get('vnp_TxnRef') || '';
-    const orderInfo = searchParams.get('vnp_OrderInfo') || '';
-    const rawAmount = searchParams.get('vnp_Amount') || '0';
-    // VNPay amount is multiplied by 100
-    const amount = (parseInt(rawAmount, 10) / 100).toLocaleString('vi-VN') + ' đ';
-    const bankCode = searchParams.get('vnp_BankCode') || '';
-    const transactionNo = searchParams.get('vnp_TransactionNo') || '';
+    const contractCode = searchParams.get('contractCode') || '';
 
-    if (responseCode === '00') {
+    if (paymentStatus === 'success') {
       // ✅ Success
       toast.success('Thanh toán hợp đồng thành công!', {
         description: (
           <div className="space-y-1 text-xs mt-1">
-            <div><span className="font-semibold">Mã giao dịch:</span> {txnRef}</div>
-            <div><span className="font-semibold">Số GD ngân hàng:</span> {transactionNo}</div>
-            <div><span className="font-semibold">Số tiền:</span> {amount}</div>
-            {bankCode && <div><span className="font-semibold">Ngân hàng:</span> {bankCode}</div>}
-            {orderInfo && <div className="text-muted-foreground">{decodeURIComponent(orderInfo.replace(/\+/g, ' '))}</div>}
+            {contractCode && (
+              <div>
+                <span className="font-semibold">Mã hợp đồng:</span> {contractCode}
+              </div>
+            )}
+            <div className="text-muted-foreground">
+              Hệ thống đã ghi nhận thanh toán phí nhận lớp của bạn.
+            </div>
           </div>
         ),
         duration: 8000,
       });
       // Refresh the contracts list to show updated status
       queryClient.invalidateQueries({ queryKey: ['contracts'] });
-    } else if (responseCode === '24') {
-      // 🔶 User cancelled
-      toast.warning('Giao dịch đã bị hủy', {
-        description: 'Bạn đã hủy thanh toán. Không có khoản nào bị trừ.',
-        duration: 5000,
-      });
     } else {
       // ❌ Payment failed
-      const reason = VNPAY_ERROR_MESSAGES[responseCode] ?? `Lỗi không xác định (mã: ${responseCode}).`;
       toast.error('Thanh toán không thành công', {
         description: (
           <div className="space-y-1 text-xs mt-1">
-            <div>{reason}</div>
-            {txnRef && <div><span className="font-semibold">Mã GD:</span> {txnRef}</div>}
+            {contractCode && (
+              <div>
+                <span className="font-semibold">Mã hợp đồng:</span> {contractCode}
+              </div>
+            )}
+            <div className="text-muted-foreground">
+              Giao dịch thanh toán phí nhận lớp đã thất bại hoặc bị hủy. Vui lòng thử lại.
+            </div>
           </div>
         ),
         duration: 7000,
       });
     }
 
-    // 🧹 Strip all vnp_* params from the URL to keep it clean
+    // 🧹 Strip payment and contractCode params from the URL to keep it clean
     const cleanParams = new URLSearchParams(searchParams.toString());
-    cleanParams.forEach((_val, key) => {
-      if (key.startsWith('vnp_')) cleanParams.delete(key);
-    });
+    cleanParams.delete('payment');
+    cleanParams.delete('contractCode');
     const cleanQuery = cleanParams.toString();
     router.replace(`${pathname}${cleanQuery ? `?${cleanQuery}` : ''}`, { scroll: false });
   // eslint-disable-next-line react-hooks/exhaustive-deps

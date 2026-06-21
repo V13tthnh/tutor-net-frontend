@@ -1,5 +1,5 @@
 'use client';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { useDebounce } from '@/hooks/use-debounce';
@@ -180,6 +180,31 @@ export function ClassRequestManagementTable() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
+  // Sync / validate parameters on mount
+  useEffect(() => {
+    const params = new URLSearchParams(searchParams.toString());
+    let changed = false;
+    if (!params.has('page')) {
+      params.set('page', '1');
+      changed = true;
+    }
+    if (!params.has('limit') && !params.has('size')) {
+      params.set('limit', '10');
+      changed = true;
+    }
+    if (!params.has('sortBy')) {
+      params.set('sortBy', 'createdAt');
+      changed = true;
+    }
+    if (!params.has('sortDir')) {
+      params.set('sortDir', 'desc');
+      changed = true;
+    }
+    if (changed) {
+      router.replace(`${pathname}?${params.toString()}`);
+    }
+  }, [searchParams, pathname, router]);
+
   // Get state from URL
   const [search, setSearch] = useState(() => searchParams.get('keyword') || '');
   const debouncedSearch = useDebounce(search, 500);
@@ -191,13 +216,33 @@ export function ClassRequestManagementTable() {
   }, [searchParams]);
 
   const pageSize = useMemo(() => {
-    const urlLimit = searchParams.get('limit');
-    return urlLimit ? Number(urlLimit) : 10;
+    const urlSize = searchParams.get('limit') || searchParams.get('size');
+    const num = urlSize ? Number(urlSize) : 10;
+    return isNaN(num) || num < 1 ? 10 : num;
   }, [searchParams]);
 
-  const [statusSelected, setStatusSelected] = useState<Set<string>>(new Set());
-  const [subjectSelected, setSubjectSelected] = useState<Set<number>>(new Set());
-  const [teachingModeSelected, setTeachingModeSelected] = useState<Set<string>>(new Set());
+  const statusSelected = useMemo(() => {
+    const status = searchParams.get('status');
+    return status ? new Set([status]) : new Set<string>();
+  }, [searchParams]);
+
+  const subjectSelected = useMemo(() => {
+    const subjectId = searchParams.get('subjectId');
+    return subjectId ? new Set([Number(subjectId)]) : new Set<number>();
+  }, [searchParams]);
+
+  const teachingModeSelected = useMemo(() => {
+    const teachingMode = searchParams.get('teachingMode');
+    return teachingMode ? new Set([teachingMode]) : new Set<string>();
+  }, [searchParams]);
+
+  const sortBy = useMemo(() => {
+    return searchParams.get('sortBy') || 'createdAt';
+  }, [searchParams]);
+
+  const sortDir = useMemo(() => {
+    return searchParams.get('sortDir') || 'desc';
+  }, [searchParams]);
 
   // Modals & dialogs
   const [detailOpen, setDetailOpen] = useState(false);
@@ -217,14 +262,37 @@ export function ClassRequestManagementTable() {
   const updateQuery = (updates: Record<string, string | number | null | undefined>) => {
     const params = new URLSearchParams(searchParams.toString());
     Object.entries(updates).forEach(([key, value]) => {
+      const actualKey = key === 'size' ? 'limit' : key;
       if (value === null || value === undefined || value === '') {
-        params.delete(key);
+        params.delete(actualKey);
       } else {
-        params.set(key, String(value));
+        params.set(actualKey, String(value));
       }
     });
+
+    if (!params.has('page')) params.set('page', String(page));
+    if (!params.has('limit')) params.set('limit', String(pageSize));
+    if (!params.has('sortBy')) params.set('sortBy', sortBy);
+    if (!params.has('sortDir')) params.set('sortDir', sortDir);
+
     router.push(`${pathname}?${params.toString()}`);
   };
+
+  // Sync search input with URL changes
+  useEffect(() => {
+    const urlKeyword = searchParams.get('keyword') || '';
+    if (urlKeyword !== search) {
+      setSearch(urlKeyword);
+    }
+  }, [searchParams]);
+
+  // Sync debounced search to URL
+  useEffect(() => {
+    const urlKeyword = searchParams.get('keyword') || '';
+    if (debouncedSearch !== urlKeyword) {
+      updateQuery({ keyword: debouncedSearch || null, page: 1 });
+    }
+  }, [debouncedSearch]);
 
   const goTo = (pageNum: number) => {
     if (pageNum < 1) return;
@@ -239,10 +307,10 @@ export function ClassRequestManagementTable() {
       status: statusSelected.size > 0 ? Array.from(statusSelected)[0] : undefined,
       subjectId: subjectSelected.size > 0 ? Array.from(subjectSelected)[0] : undefined,
       teachingMode: teachingModeSelected.size > 0 ? Array.from(teachingModeSelected)[0] : undefined,
-      sortBy: 'createdAt',
-      sortDir: 'desc',
+      sortBy,
+      sortDir,
     }),
-    [page, pageSize, debouncedSearch, statusSelected, subjectSelected, teachingModeSelected]
+    [page, pageSize, debouncedSearch, statusSelected, subjectSelected, teachingModeSelected, sortBy, sortDir]
   );
 
   const { data: response, isLoading } = useQuery(adminClassRequestsQueryOptions(filters));
@@ -316,12 +384,11 @@ export function ClassRequestManagementTable() {
               value={search}
               onChange={(e) => {
                 setSearch(e.target.value);
-                updateQuery({ keyword: e.target.value || null, page: 1 });
               }}
               className="flex-1"
             />
             {isLoading && search !== debouncedSearch && (
-              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground self-center" />
             )}
           </div>
 
@@ -331,19 +398,11 @@ export function ClassRequestManagementTable() {
               options={STATUS_OPTIONS}
               selected={statusSelected}
               onToggle={(value) => {
-                const newSet = new Set(statusSelected);
-                if (newSet.has(value)) {
-                  newSet.delete(value);
-                } else {
-                  newSet.clear();
-                  newSet.add(value);
-                }
-                setStatusSelected(newSet);
-                updateQuery({ page: 1 });
+                const newStatus = statusSelected.has(value) ? null : value;
+                updateQuery({ status: newStatus, page: 1 });
               }}
               onClear={() => {
-                setStatusSelected(new Set());
-                updateQuery({ page: 1 });
+                updateQuery({ status: null, page: 1 });
               }}
             />
 
@@ -352,20 +411,11 @@ export function ClassRequestManagementTable() {
               options={subjectOptions}
               selected={subjectSelected.size > 0 ? new Set(Array.from(subjectSelected).map(String)) : new Set()}
               onToggle={(value) => {
-                const newSet = new Set(subjectSelected);
-                const numValue = Number(value);
-                if (newSet.has(numValue)) {
-                  newSet.delete(numValue);
-                } else {
-                  newSet.clear();
-                  newSet.add(numValue);
-                }
-                setSubjectSelected(newSet);
-                updateQuery({ page: 1 });
+                const newSubjectId = subjectSelected.has(Number(value)) ? null : value;
+                updateQuery({ subjectId: newSubjectId, page: 1 });
               }}
               onClear={() => {
-                setSubjectSelected(new Set());
-                updateQuery({ page: 1 });
+                updateQuery({ subjectId: null, page: 1 });
               }}
             />
 
@@ -374,19 +424,11 @@ export function ClassRequestManagementTable() {
               options={TEACHING_MODE_OPTIONS}
               selected={teachingModeSelected}
               onToggle={(value) => {
-                const newSet = new Set(teachingModeSelected);
-                if (newSet.has(value)) {
-                  newSet.delete(value);
-                } else {
-                  newSet.clear();
-                  newSet.add(value);
-                }
-                setTeachingModeSelected(newSet);
-                updateQuery({ page: 1 });
+                const newMode = teachingModeSelected.has(value) ? null : value;
+                updateQuery({ teachingMode: newMode, page: 1 });
               }}
               onClear={() => {
-                setTeachingModeSelected(new Set());
-                updateQuery({ page: 1 });
+                updateQuery({ teachingMode: null, page: 1 });
               }}
             />
 
@@ -396,10 +438,13 @@ export function ClassRequestManagementTable() {
                 size="sm"
                 onClick={() => {
                   setSearch('');
-                  setStatusSelected(new Set());
-                  setSubjectSelected(new Set());
-                  setTeachingModeSelected(new Set());
-                  updateQuery({ keyword: null, page: 1 });
+                  updateQuery({
+                    keyword: null,
+                    status: null,
+                    subjectId: null,
+                    teachingMode: null,
+                    page: 1,
+                  });
                 }}
               >
                 <Cross2Icon className="mr-1.5 h-3.5 w-3.5" />
