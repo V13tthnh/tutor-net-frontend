@@ -11,7 +11,7 @@ import { useNotificationStore } from '../utils/store';
 import { useAuthSession } from '@/features/auth/hooks/use-auth-session';
 
 export default function NotificationsPage() {
-  const { accessToken } = useAuthSession();
+  const { user } = useAuthSession();
   const router = useRouter();
 
   const {
@@ -39,15 +39,15 @@ export default function NotificationsPage() {
 
   // Fetch initial page when token or active tab changes
   useEffect(() => {
-    if (accessToken) {
+    if (user) {
       fetchHistory(currentFilter, true);
     }
-  }, [accessToken, activeTab, fetchHistory]);
+  }, [user, activeTab, fetchHistory]);
 
   // Infinite scroll intersection observer
   useEffect(() => {
     const currentTarget = loadMoreRef.current;
-    if (!currentTarget || !accessToken) return;
+    if (!currentTarget || !user) return;
 
     const observer = new IntersectionObserver(
       (entries) => {
@@ -65,7 +65,7 @@ export default function NotificationsPage() {
         observer.unobserve(currentTarget);
       }
     };
-  }, [accessToken, historyHasMore, historyLoading, activeTab, fetchHistory]);
+  }, [user, historyHasMore, historyLoading, activeTab, fetchHistory]);
 
   const handleAction = async (notifId: string, actionId: string) => {
     const notif = historyNotifications.find((n) => n.id === notifId);

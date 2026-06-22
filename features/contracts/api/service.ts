@@ -36,3 +36,10 @@ export async function signContract(contractId: number): Promise<void> {
     method: 'POST',
   });
 }
+
+export async function downloadContractPdf(contractId: number): Promise<Blob> {
+  return apiClient<Blob>(`/contracts/${contractId}/download-pdf`, {
+    responseType: 'blob',
+  });
+}
+

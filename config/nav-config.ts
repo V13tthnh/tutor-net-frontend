@@ -107,22 +107,22 @@ export const navGroups: NavGroup[] = [
             shortcut: ['c', 'h'],
             isActive: false,
           },
-          {
-            title: 'Khoản thanh toán',
-            url: '/admin/payments/payout',
-            icon: 'payment',
-            shortcut: ['p', 'o'],
-            isActive: false,
-            items: []
-          },
-          {
-            title: 'Tranh chấp',
-            url: '/admin/payments/dispute',
-            icon: 'warning',
-            shortcut: ['d', 'p'],
-            isActive: false,
-            items: []
-          }
+          // {
+          //   title: 'Khoản thanh toán',
+          //   url: '/admin/payments/payout',
+          //   icon: 'payment',
+          //   shortcut: ['p', 'o'],
+          //   isActive: false,
+          //   items: []
+          // },
+          // {
+          //   title: 'Tranh chấp',
+          //   url: '/admin/payments/dispute',
+          //   icon: 'warning',
+          //   shortcut: ['d', 'p'],
+          //   isActive: false,
+          //   items: []
+          // }
         ]
       },
 
@@ -169,14 +169,14 @@ export const navGroups: NavGroup[] = [
             isActive: true,
             items: []
           },
-          {
-            title: 'Audit Logs',
-            url: '/admin/audit-logs',
-            icon: 'logs',
-            shortcut: ['a', 'l'],
-            isActive: false,
-            items: []
-          }
+          // {
+          //   title: 'Audit Logs',
+          //   url: '/admin/audit-logs',
+          //   icon: 'logs',
+          //   shortcut: ['a', 'l'],
+          //   isActive: false,
+          //   items: []
+          // }
         ]
       },
     ]

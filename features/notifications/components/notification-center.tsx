@@ -26,10 +26,10 @@ const actionRoutes: Record<string, string> = {
 };
 
 export function NotificationCenter() {
-  const { accessToken } = useAuthSession();
+  const { user } = useAuthSession();
 
   // Connect client to real-time notification socket
-  useNotifications(accessToken);
+  useNotifications(!!user);
 
   const { notifications, fetchUnread, markAsRead, markAllAsRead, unreadCount } = useNotificationStore();
   const router = useRouter();
@@ -38,10 +38,10 @@ export function NotificationCenter() {
 
   // Sync initial list of unread notifications from DB
   useEffect(() => {
-    if (accessToken) {
+    if (user) {
       fetchUnread();
     }
-  }, [accessToken, fetchUnread]);
+  }, [user, fetchUnread]);
 
   return (
     <Popover>

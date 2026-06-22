@@ -13,12 +13,15 @@ export async function GET(
   // Clean double /uploads/uploads/ to single /uploads/
   pathname = pathname.replace(/^\/(uploads\/)+/, '/uploads/');
 
-  const targetUrl = `${backendHost}${pathname}`;
+  if (
+    pathname.includes('..') ||
+    pathname.includes('\0') ||
+    !/^\/uploads\/[\w\-./]+$/.test(pathname)
+  ) {
+    return new NextResponse('Bad Request', { status: 400 });
+  }
 
-  // DEBUG — xóa sau khi fix xong
-  console.log('[uploads proxy] raw pathname:', request.nextUrl.pathname);
-  console.log('[uploads proxy] cleaned pathname:', pathname);
-  console.log('[uploads proxy] targetUrl:', targetUrl);
+  const targetUrl = `${backendHost}${pathname}`;
 
   try {
     const res = await fetch(targetUrl, {

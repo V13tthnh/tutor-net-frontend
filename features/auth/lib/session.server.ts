@@ -3,7 +3,7 @@
 import "server-only";
 import { cookies } from "next/headers";
 import { AUTH_CONFIG } from "./auth.config";
-import { getSessionFromCookies } from "./auth.utils";
+import { getSessionFromCookies, signUserCookie } from "./auth.utils";
 import type { AuthSession } from "../types/auth.types";
 
 // ─── Cookie options ───────────────────────────────────────────────────────────
@@ -23,7 +23,7 @@ export async function getServerSession(): Promise<AuthSession | null> {
 
 export async function setServerSession(session: AuthSession): Promise<void> {
   const store = await cookies();
-  
+
   if (session.accessToken) {
     const maxAge = Math.max(0, Math.floor((session.expiresAt - Date.now()) / 1_000));
     store.set('admin_access_token', session.accessToken, {
@@ -38,11 +38,12 @@ export async function setServerSession(session: AuthSession): Promise<void> {
   store.set('admin_refresh_token', session.refreshToken, {
     ...BASE_OPTIONS,
     path: "/",
-    maxAge: 30 * 24 * 60 * 60, // 30 days
+    maxAge: 24 * 60 * 60, // 24 hours
   });
 
   const userRaw = Buffer.from(JSON.stringify(session.user)).toString('base64');
-  store.set('admin_user', userRaw, {
+  const userSigned = signUserCookie(userRaw);
+  store.set('admin_user', userSigned, {
     ...BASE_OPTIONS,
     path: "/",
     maxAge: 30 * 24 * 60 * 60, // 30 days
@@ -65,7 +66,7 @@ export async function getClientSession(): Promise<AuthSession | null> {
 
 export async function setClientSession(session: AuthSession): Promise<void> {
   const store = await cookies();
-  
+
   if (session.accessToken) {
     const maxAge = Math.max(0, Math.floor((session.expiresAt - Date.now()) / 1_000));
     store.set('client_access_token', session.accessToken, {
@@ -84,7 +85,8 @@ export async function setClientSession(session: AuthSession): Promise<void> {
   });
 
   const userRaw = Buffer.from(JSON.stringify(session.user)).toString('base64');
-  store.set('client_user', userRaw, {
+  const userSigned = signUserCookie(userRaw);
+  store.set('client_user', userSigned, {
     ...BASE_OPTIONS,
     path: "/",
     maxAge: 30 * 24 * 60 * 60,

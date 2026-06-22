@@ -140,6 +140,18 @@ export async function getFeaturedTutors(count?: number): Promise<Tutor[]> {
 }
 
 export async function getTutorById(id: number): Promise<TutorByIdResponse> {
+  try {
+    const res = await apiClient<any>(`/tutors/${id}`);
+    if (res && (res.id !== undefined || res.data !== undefined)) {
+      const tutorData = res.data !== undefined ? res.data : res;
+      return {
+        success: true,
+        tutor: tutorData
+      };
+    }
+  } catch (e) {
+    console.error('Failed to fetch tutor details by ID from API, falling back to mock:', e);
+  }
   return fakeTutors.getTutorById(id);
 }
 

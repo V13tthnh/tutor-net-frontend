@@ -207,6 +207,7 @@ export function SessionListingPage() {
           title: rating <= 3 || isReported ? 'Đánh giá cần kiểm tra' : 'Đánh giá mới',
           body: `${userName} đã đánh giá ${rating} sao cho gia sư ${selectedSession.tutor_name}.`,
           createdAt: new Date().toISOString(),
+          type: 'review',
           actions: [
             {
               id: 'view-reviews',

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getClientSession, setClientSession, getServerSession, setServerSession } from '@/features/auth/lib/session.server';
 import { queryGetMe } from '@/features/auth/api/queries';
 import { getAvatarUrl } from '@/lib/utils';
+import { signUserCookie } from '@/features/auth/lib/auth.utils';
 
 export const dynamic = 'force-dynamic';
 
@@ -50,7 +51,6 @@ export async function GET(request: Request) {
   }
 
   const response = NextResponse.json({
-    accessToken: session.accessToken,
     user: {
       id: user.id,
       email: user.email,
@@ -71,7 +71,8 @@ export async function GET(request: Request) {
       path: "/",
     };
     const userRaw = Buffer.from(JSON.stringify(session.user)).toString('base64');
-    response.cookies.set(`${prefix}_user`, userRaw, {
+    const userSigned = signUserCookie(userRaw);
+    response.cookies.set(`${prefix}_user`, userSigned, {
       ...BASE_OPTIONS,
       maxAge: 30 * 24 * 60 * 60,
     });

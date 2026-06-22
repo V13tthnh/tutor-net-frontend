@@ -19,31 +19,30 @@ interface AdminSessionPayload extends AdminSession {
   nonce: string;
 }
 
-const DEV_ADMIN_EMAIL = 'admin@tutornet.local';
-const DEV_ADMIN_PASSWORD = 'admin123456';
-const DEV_ADMIN_SESSION_SECRET = 'tutornet-admin-dev-session-secret';
-
 function getAdminEmail() {
-  return (
-    process.env.ADMIN_EMAIL?.trim() ||
-    (process.env.NODE_ENV === 'production' ? undefined : DEV_ADMIN_EMAIL)
-  );
+  const email = process.env.ADMIN_EMAIL?.trim();
+  if (!email) {
+    throw new Error('[Security] ADMIN_EMAIL chua duoc cau hinh trong .env.local');
+  }
+  return email;
 }
 
 function getAdminPassword() {
-  return (
-    process.env.ADMIN_PASSWORD ||
-    (process.env.NODE_ENV === 'production' ? undefined : DEV_ADMIN_PASSWORD)
-  );
+  const password = process.env.ADMIN_PASSWORD;
+  if (!password) {
+    throw new Error('[Security] ADMIN_PASSWORD chua duoc cau hinh trong .env.local');
+  }
+  return password;
 }
 
 function getAdminSessionSecret() {
-  return (
-    process.env.ADMIN_SESSION_SECRET ||
-    process.env.AUTH_SECRET ||
-    process.env.CLERK_SECRET_KEY ||
-    (process.env.NODE_ENV === 'production' ? undefined : DEV_ADMIN_SESSION_SECRET)
-  );
+  const secret = process.env.ADMIN_SESSION_SECRET || process.env.AUTH_SECRET;
+  if (!secret) {
+    throw new Error(
+      '[Security] ADMIN_SESSION_SECRET/AUTH_SECRET chua duoc cau hinh. Them ADMIN_SESSION_SECRET hoac AUTH_SECRET vao .env.local.'
+    );
+  }
+  return secret;
 }
 
 function digest(value: string) {

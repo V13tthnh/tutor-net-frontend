@@ -52,7 +52,6 @@ export default function AccountLayout({ children }: { children: React.ReactNode 
         { id: 'new-cv', label: 'Đăng ký làm gia sư', icon: <Icons.cv size={16} />, href: `/account/new-cv` },
         { id: 'my-classes', label: 'Lớp của tôi', icon: <Icons.class size={16} />, href: `/account/my-classes` },
         { id: 'contracts', label: 'Hợp đồng của tôi', icon: <Icons.forms size={16} />, href: `/account/contracts` },
-        { id: 'history', label: 'Yêu cầu tìm gia sư', icon: <Icons.history size={16} />, href: `/account/history` },
         { id: 'security', label: 'Bảo mật', icon: <Icons.lock size={16} />, href: `/account/security` },
     ];
 

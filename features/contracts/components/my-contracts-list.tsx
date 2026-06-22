@@ -5,7 +5,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { useDebounce } from '@/hooks/use-debounce';
 import { myContractsQueryOptions } from '../api/queries';
-import { signContract } from '../api/service';
+import { signContract, downloadContractPdf } from '../api/service';
 import type { ContractResponse, ContractStatus, ContractFilters } from '../api/types';
 import { Icons } from '@/components/icons';
 import { Button } from '@/components/ui/button';
@@ -223,6 +223,7 @@ export default function MyContractsList() {
   // Clickwrap dialog state
   const [signingContract, setSigningContract] = useState<ContractResponse | null>(null);
   const [termsAgreed, setTermsAgreed] = useState(false);
+  const [downloadingId, setDownloadingId] = useState<number | null>(null);
 
   // URL query parameter helper
   const updateQuery = (updates: Record<string, string | number | null | undefined>) => {
@@ -286,6 +287,27 @@ export default function MyContractsList() {
   const handleSignSubmit = async () => {
     if (!signingContract || !termsAgreed) return;
     await signMutation.mutateAsync(signingContract.id);
+  };
+
+  const handleDownloadPdf = async (contractId: number, contractNumber: string) => {
+    setDownloadingId(contractId);
+    try {
+      const blob = await downloadContractPdf(contractId);
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `hop-dong-${contractNumber}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+      toast.success('Tải file hợp đồng PDF thành công!');
+    } catch (error: any) {
+      console.error('Failed to download PDF:', error);
+      toast.error(error?.message || 'Không thể tải file PDF hợp đồng. Vui lòng thử lại sau.');
+    } finally {
+      setDownloadingId(null);
+    }
   };
 
   if (isLoading) {
@@ -475,15 +497,31 @@ export default function MyContractsList() {
                               Xem & Ký
                             </Button>
                           ) : hasPdf ? (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="h-8 text-xs font-semibold cursor-pointer border-primary/30 text-primary hover:bg-primary/10 px-4"
-                              onClick={() => window.open(contract.contractFileUrl, '_blank')}
-                            >
-                              <Icons.fileTypePdf size={12} className="mr-1 text-rose-500" />
-                              Xem PDF
-                            </Button>
+                            <div className="flex items-center justify-center gap-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-8 text-xs font-semibold cursor-pointer border-primary/30 text-primary hover:bg-primary/10 px-3"
+                                onClick={() => window.open(contract.contractFileUrl, '_blank')}
+                              >
+                                <Icons.fileTypePdf size={12} className="mr-1 text-rose-500" />
+                                Xem PDF
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-8 text-xs font-semibold cursor-pointer border-primary/30 text-primary hover:bg-primary/10 px-3"
+                                onClick={() => handleDownloadPdf(contract.id, contract.contractNumber)}
+                                disabled={downloadingId === contract.id}
+                              >
+                                {downloadingId === contract.id ? (
+                                  <Icons.spinner size={12} className="mr-1 animate-spin text-primary" />
+                                ) : (
+                                  <Icons.download size={12} className="mr-1" />
+                                )}
+                                Tải về
+                              </Button>
+                            </div>
                           ) : (
                             <span className="text-xs text-muted-foreground italic">Đang cập nhật</span>
                           )}
@@ -549,15 +587,31 @@ export default function MyContractsList() {
                           Xem & Ký hợp đồng
                         </Button>
                       ) : hasPdf ? (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="w-full h-9 text-xs font-semibold border-primary/30 text-primary hover:bg-primary/5"
-                          onClick={() => window.open(contract.contractFileUrl, '_blank')}
-                        >
-                          <Icons.fileTypePdf size={12} className="mr-1.5 text-rose-500" />
-                          Tải/Xem văn bản PDF
-                        </Button>
+                        <div className="flex gap-2 w-full">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="flex-1 h-9 text-xs font-semibold border-primary/30 text-primary hover:bg-primary/5"
+                            onClick={() => window.open(contract.contractFileUrl, '_blank')}
+                          >
+                            <Icons.fileTypePdf size={12} className="mr-1 text-rose-500" />
+                            Xem PDF
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="flex-1 h-9 text-xs font-semibold border-primary/30 text-primary hover:bg-primary/5"
+                            onClick={() => handleDownloadPdf(contract.id, contract.contractNumber)}
+                            disabled={downloadingId === contract.id}
+                          >
+                            {downloadingId === contract.id ? (
+                              <Icons.spinner size={12} className="mr-1 animate-spin text-primary" />
+                            ) : (
+                              <Icons.download size={12} className="mr-1" />
+                            )}
+                            Tải về
+                          </Button>
+                        </div>
                       ) : (
                         <span className="text-xs text-muted-foreground italic w-full text-center">Không có thao tác</span>
                       )}

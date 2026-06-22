@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession, getClientSession, setServerSession, setClientSession, clearServerSession, clearClientSession } from '@/features/auth/lib/session.server';
 import { refreshSessionService } from '@/features/auth/api/service';
 import { AUTH_CONFIG } from '@/features/auth/lib/auth.config';
+import { signUserCookie } from '@/features/auth/lib/auth.utils';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,12 +20,28 @@ async function proxyRequest(
   });
 }
 
+function isSafePath(pathStr: string): boolean {
+  if (!pathStr) return true;
+  if (pathStr.length > 500) return false;
+  if (pathStr.includes('..')) return false;       // path traversal
+  if (pathStr.includes('\0')) return false;        // null byte
+  if (/[a-zA-Z][a-zA-Z0-9+\-.]*:/.test(pathStr)) return false; // protocol injection
+  return true;
+}
+
 async function handleProxy(
   request: NextRequest,
   context: { params: Promise<{ path: string[] }> }
 ) {
   const { path } = await context.params;
   let pathStr = path.join('/');
+
+  if (!isSafePath(pathStr)) {
+    return NextResponse.json(
+      { success: false, message: 'Yêu cầu không hợp lệ' },
+      { status: 400 }
+    );
+  }
 
   const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8080/api/v1';
 
@@ -154,7 +171,8 @@ async function handleProxy(
     });
 
     const userRaw = Buffer.from(JSON.stringify(sessionObj.user)).toString('base64');
-    response.cookies.set(`${prefix}_user`, userRaw, {
+    const userSigned = signUserCookie(userRaw);
+    response.cookies.set(`${prefix}_user`, userSigned, {
       ...BASE_OPTIONS,
       maxAge: 30 * 24 * 60 * 60,
     });

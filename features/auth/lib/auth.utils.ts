@@ -1,5 +1,6 @@
 // features/auth/lib/auth.utils.ts
 
+import { createHmac, timingSafeEqual } from 'node:crypto';
 import { AUTH_CONFIG } from "./auth.config";
 import type { AuthSession, DomainUser } from "../types/auth.types";
 import type { AuthResponse, TokenResponse } from "../api/types";
@@ -87,6 +88,44 @@ export function deserializeSession(raw: string): AuthSession | null {
   }
 }
 
+export function signUserCookie(payload: string): string {
+  const secret = process.env.ADMIN_SESSION_SECRET || process.env.AUTH_SECRET;
+  if (!secret) {
+    throw new Error('[Security] Session secret is not configured.');
+  }
+  const signature = createHmac('sha256', secret).update(payload).digest('base64url');
+  return `${payload}.${signature}`;
+}
+
+export function verifyAndExtractUserCookie(signedValue: string): string | null {
+  const secret = process.env.ADMIN_SESSION_SECRET || process.env.AUTH_SECRET;
+  if (!secret) {
+    throw new Error('[Security] Session secret is not configured.');
+  }
+
+  const lastDot = signedValue.lastIndexOf('.');
+  if (lastDot === -1) return null;
+
+  const payload = signedValue.slice(0, lastDot);
+  const signature = signedValue.slice(lastDot + 1);
+
+  const expectedSignature = createHmac('sha256', secret).update(payload).digest('base64url');
+
+  try {
+    const sigBuffer = Buffer.from(signature, 'base64url');
+    const expectedSigBuffer = Buffer.from(expectedSignature, 'base64url');
+    
+    if (sigBuffer.length !== expectedSigBuffer.length) {
+      return null;
+    }
+    
+    const isMatch = timingSafeEqual(sigBuffer, expectedSigBuffer);
+    return isMatch ? payload : null;
+  } catch {
+    return null;
+  }
+}
+
 export interface RequestCookies {
   get(name: string): { value: string } | undefined;
 }
@@ -94,9 +133,12 @@ export interface RequestCookies {
 export function getSessionFromCookies(cookies: RequestCookies, prefix: 'admin' | 'client'): AuthSession | null {
   const accessToken = cookies.get(`${prefix}_access_token`)?.value || '';
   const refreshToken = cookies.get(`${prefix}_refresh_token`)?.value;
-  const userRaw = cookies.get(`${prefix}_user`)?.value;
+  const userSigned = cookies.get(`${prefix}_user`)?.value;
 
-  if (!refreshToken || !userRaw) return null;
+  if (!refreshToken || !userSigned) return null;
+
+  const userRaw = verifyAndExtractUserCookie(userSigned);
+  if (!userRaw) return null;
 
   try {
     const userJson = Buffer.from(userRaw, 'base64').toString('utf-8');

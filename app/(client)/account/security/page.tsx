@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -10,6 +11,7 @@ import { Icons } from '@/components/icons';
 import { useAuthSession } from '@/features/auth/hooks/use-auth-session';
 import { apiClient } from '@/lib/api-client';
 import { toast } from 'sonner';
+import { clientLogoutAction } from '@/features/auth/actions/client-logout';
 
 interface FieldErrors {
     password?: string;
@@ -18,12 +20,44 @@ interface FieldErrors {
 }
 
 export default function SecurityPage() {
+    const router = useRouter();
     const { user, loading: authLoading } = useAuthSession();
     const [showOld, setShowOld] = useState(false);
     const [showNew, setShowNew] = useState(false);
     const [showNewConfirm, setShowNewConfirm] = useState(false);
     // State quản lý việc hiển thị form xác nhận xoá tài khoản
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+    // State cho việc xoá tài khoản
+    const [deletePassword, setDeletePassword] = useState('');
+    const [deleting, setDeleting] = useState(false);
+    const [deleteError, setDeleteError] = useState('');
+
+    const handleDeleteAccount = async () => {
+        if (!deletePassword) {
+            setDeleteError('Vui lòng nhập mật khẩu để xác nhận xoá tài khoản');
+            return;
+        }
+        setDeleteError('');
+        setDeleting(true);
+        try {
+            const res = await apiClient<{ success: boolean; message?: string }>(`/users/${user?.id}`, {
+                method: 'DELETE',
+                body: JSON.stringify({
+                    password: deletePassword
+                })
+            });
+
+            toast.success(res.message || 'Tài khoản của bạn đã được xoá thành công.');
+            await clientLogoutAction();
+            router.push('/auth/login?reason=deleted');
+        } catch (err: any) {
+            console.error('Lỗi xoá tài khoản:', err);
+            setDeleteError(err?.message || 'Mật khẩu không chính xác hoặc có lỗi xảy ra');
+        } finally {
+            setDeleting(false);
+        }
+    };
 
     // State cho việc đổi mật khẩu
     const [password, setPassword] = useState('');
@@ -211,9 +245,10 @@ export default function SecurityPage() {
                             <div>
                                 <p className='font-medium text-sm'>Xác thực qua SMS</p>
                                 <p className='text-xs text-muted-foreground'>Nhận mã OTP qua số điện thoại đăng ký</p>
+                                <p className='text-[10px] text-amber-600 font-medium mt-0.5' suppressHydrationWarning>*(Tính năng đang được tích hợp cùng nhà mạng)*</p>
                             </div>
                         </div>
-                        <Switch />
+                        <Switch disabled />
                     </div>
                 </div>
             </ScrollReveal>
@@ -241,20 +276,48 @@ export default function SecurityPage() {
                             ) : (
                                 <div className='space-y-4 max-w-sm p-5 border border-red-200 dark:border-red-800 rounded-xl bg-background shadow-sm animate-in fade-in slide-in-from-top-2'>
                                     <div className='space-y-2'>
-                                        <Label className='text-sm font-medium text-foreground'>Nhập mật khẩu để xác nhận</Label>
+                                        <Label className='text-sm font-medium text-foreground' htmlFor='delete-confirm-password'>Nhập mật khẩu để xác nhận</Label>
                                         <div className='relative'>
                                             <Icons.lock size={14} className='absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground' />
-                                            <Input type='password' placeholder='••••••••' className='h-10 pl-9' />
+                                            <Input
+                                                id='delete-confirm-password'
+                                                type='password'
+                                                placeholder='••••••••'
+                                                className={`h-10 pl-9 pr-4 ${deleteError ? 'border-destructive focus-visible:ring-destructive/30' : ''}`}
+                                                value={deletePassword}
+                                                onChange={(e) => {
+                                                    setDeletePassword(e.target.value);
+                                                    if (deleteError) setDeleteError('');
+                                                }}
+                                                disabled={deleting}
+                                            />
                                         </div>
+                                        {deleteError && (
+                                            <p className='text-xs text-destructive flex items-center gap-1 mt-1'>
+                                                <Icons.alertCircle size={12} className='shrink-0' />
+                                                {deleteError}
+                                            </p>
+                                        )}
                                     </div>
                                     <div className='flex gap-3'>
-                                        <Button variant='destructive' className='flex-1'>
+                                        <Button
+                                            variant='destructive'
+                                            className='flex-1'
+                                            onClick={handleDeleteAccount}
+                                            disabled={deleting}
+                                            isLoading={deleting}
+                                        >
                                             Xác nhận xoá
                                         </Button>
                                         <Button
                                             variant='outline'
-                                            onClick={() => setShowDeleteConfirm(false)}
+                                            onClick={() => {
+                                                setShowDeleteConfirm(false);
+                                                setDeletePassword('');
+                                                setDeleteError('');
+                                            }}
                                             className='flex-1'
+                                            disabled={deleting}
                                         >
                                             Huỷ thao tác
                                         </Button>
