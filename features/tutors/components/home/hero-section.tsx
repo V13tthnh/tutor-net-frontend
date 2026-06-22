@@ -1,4 +1,4 @@
-'use-client';
+'use client';
 
 import { useState } from 'react';
 import Image from "next/image";
@@ -7,10 +7,26 @@ import { Icons } from "@/components/icons";
 import { ScrollReveal } from "@/hooks/use-scroll-reveal";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
+import { useQuery } from "@tanstack/react-query";
+import { tutorFilterOptionsQuery } from "../../api/queries";
+
+const SUBJECT_NAME_TO_ID: Record<string, string> = {
+    'Toán': '1',
+    'Ngữ Văn': '2',
+    'Tiếng Anh': '3',
+    'Vật Lý': '4',
+    'Hóa Học': '5',
+    'Sinh Học': '6',
+    'Lịch Sử': '7',
+    'Địa Lý': '8',
+    'Tin Học': '9',
+    'GDCD': '10'
+};
 
 export default function HeroSection() {
     const router = useRouter();
     const [quickSearch, setQuickSearch] = useState('');
+    const { data: filterOptions } = useQuery(tutorFilterOptionsQuery());
 
     const handleSearch = (e: React.FormEvent) => {
         e.preventDefault();
@@ -19,8 +35,12 @@ export default function HeroSection() {
         router.push(`/tutors?${params.toString()}`);
     };
 
-    const handleSubjectClick = (subject: string) => {
-        router.push(`/tutors?subjects=${encodeURIComponent(subject)}`);
+    const handleSubjectClick = (subjectName: string) => {
+        const found = filterOptions?.subjects?.find(
+            s => s.name.toLowerCase() === subjectName.toLowerCase()
+        );
+        const subjectId = found ? String(found.id) : (SUBJECT_NAME_TO_ID[subjectName] || subjectName);
+        router.push(`/tutors?subjects=${encodeURIComponent(subjectId)}`);
     };
 
     const handleLevelClick = (level: string) => {

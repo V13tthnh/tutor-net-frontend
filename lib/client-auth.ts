@@ -19,15 +19,14 @@ interface ClientSessionPayload extends ClientSession {
   nonce: string;
 }
 
-const DEV_CLIENT_SESSION_SECRET = 'tutornet-client-dev-session-secret';
-
 function getClientSessionSecret() {
-  return (
-    process.env.AUTH_SECRET ||
-    process.env.ADMIN_SESSION_SECRET ||
-    process.env.CLERK_SECRET_KEY ||
-    (process.env.NODE_ENV === 'production' ? undefined : DEV_CLIENT_SESSION_SECRET)
-  );
+  const secret = process.env.AUTH_SECRET || process.env.ADMIN_SESSION_SECRET;
+  if (!secret) {
+    throw new Error(
+      '[Security] AUTH_SECRET/ADMIN_SESSION_SECRET chua duoc cau hinh. Them AUTH_SECRET hoac ADMIN_SESSION_SECRET vao .env.local.'
+    );
+  }
+  return secret;
 }
 
 function digest(value: string) {

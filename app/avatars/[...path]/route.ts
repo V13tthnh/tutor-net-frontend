@@ -9,6 +9,14 @@ export async function GET(
   const { path } = await context.params;
   const pathStr = path.join('/');
 
+  if (
+    pathStr.includes('..') ||
+    pathStr.includes('\0') ||
+    !/^[\w\-./]+$/.test(pathStr)
+  ) {
+    return new NextResponse('Bad Request', { status: 400 });
+  }
+
   const backendApiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api/v1';
   const backendHost = new URL(backendApiUrl).origin; // e.g. http://localhost:8080
 

@@ -1,11 +1,34 @@
+'use client';
+
 import { ScrollReveal, Stagger } from "@/hooks/use-scroll-reveal";
 import { useRouter } from "next/navigation";
 import { SUBJECTS } from "@/constants/mock-api-tutors";
+import { useQuery } from "@tanstack/react-query";
+import { tutorFilterOptionsQuery } from "../../api/queries";
+
+const SUBJECT_NAME_TO_ID: Record<string, string> = {
+    'Toán': '1',
+    'Ngữ Văn': '2',
+    'Tiếng Anh': '3',
+    'Vật Lý': '4',
+    'Hóa Học': '5',
+    'Sinh Học': '6',
+    'Lịch Sử': '7',
+    'Địa Lý': '8',
+    'Tin Học': '9',
+    'GDCD': '10'
+};
 
 export default function SubjectsSection() {
     const router = useRouter();
-    const handleSubjectClick = (subject: string) => {
-        router.push(`/tutors?subjects=${encodeURIComponent(subject)}`);
+    const { data: filterOptions } = useQuery(tutorFilterOptionsQuery());
+
+    const handleSubjectClick = (subjectName: string) => {
+        const found = filterOptions?.subjects?.find(
+            s => s.name.toLowerCase() === subjectName.toLowerCase()
+        );
+        const subjectId = found ? String(found.id) : (SUBJECT_NAME_TO_ID[subjectName] || subjectName);
+        router.push(`/tutors?subjects=${encodeURIComponent(subjectId)}`);
     };
     return (
         <section className='py-16'>

@@ -7,9 +7,11 @@ import type { Tutor } from "@/constants/mock-api-tutors";
 
 interface HomePageClientProps {
     featuredTutors: Tutor[];
+    onContactClick?: (tutor: Tutor) => void;
+    onInviteClick?: (tutor: Tutor) => void;
 }
 
-export default function FeaturedTutorsSection({ featuredTutors }: HomePageClientProps) {
+export default function FeaturedTutorsSection({ featuredTutors, onContactClick, onInviteClick }: HomePageClientProps) {
     return (
         <section className='py-16'>
             <div className='mx-auto max-w-7xl px-4 sm:px-6 lg:px-8'>
@@ -29,7 +31,7 @@ export default function FeaturedTutorsSection({ featuredTutors }: HomePageClient
                         </Link>
                     </div>
                 </ScrollReveal>
-
+ 
                 {featuredTutors.length > 0 ? (
                     <Stagger
                         variant='fade-up'
@@ -40,7 +42,12 @@ export default function FeaturedTutorsSection({ featuredTutors }: HomePageClient
                         className='grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3'
                     >
                         {featuredTutors.map((tutor) => (
-                            <TutorCard key={tutor.id} tutor={tutor} />
+                            <TutorCard
+                                key={tutor.id}
+                                tutor={tutor}
+                                onContactClick={onContactClick}
+                                onInviteClick={onInviteClick}
+                            />
                         ))}
                     </Stagger>
                 ) : (

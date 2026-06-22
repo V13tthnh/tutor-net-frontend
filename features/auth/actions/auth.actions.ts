@@ -17,6 +17,8 @@ import {
   setServerSession,
 } from "../lib/session.server";
 import { AUTH_CONFIG } from "../lib/auth.config";
+import { checkRateLimit } from "@/lib/rate-limiter";
+import { headers } from "next/headers";
 export interface ActionState {
   error?: string;
   success?: boolean;
@@ -29,8 +31,8 @@ export async function registerAction(
   _prev: ActionState,
   formData: FormData
 ): Promise<ActionState> {
-  const email    = (formData.get("email")    as string)?.trim() ?? "";
-  const password = (formData.get("password") as string)         ?? "";
+  const email = (formData.get("email") as string)?.trim() ?? "";
+  const password = (formData.get("password") as string) ?? "";
   const fullName = (formData.get("fullName") as string)?.trim() ?? "";
 
   if (!email || !password || !fullName) {
@@ -124,6 +126,16 @@ export async function forgotPasswordAction(
 ): Promise<ForgotPasswordState> {
   const email = (formData.get("email") as string)?.trim() ?? "";
 
+  // ── Rate Limiting ─────────────────────────────────────────────────────────
+  const headersStore = await headers();
+  const ip = headersStore.get("x-forwarded-for")?.split(",")[0] || "127.0.0.1";
+  if (!checkRateLimit(ip, 5, 60000)) {
+    return {
+      error: "Quá nhiều yêu cầu gửi link khôi phục mật khẩu. Vui lòng thử lại sau 1 phút.",
+      email
+    };
+  }
+
   if (!email) {
     return { error: "Vui lòng nhập email." };
   }
@@ -153,6 +165,15 @@ export async function resetPasswordAction(
   const token = (formData.get("token") as string)?.trim() ?? "";
   const newPassword = (formData.get("newPassword") as string) ?? "";
   const confirmPassword = (formData.get("confirmPassword") as string) ?? "";
+
+  // ── Rate Limiting ─────────────────────────────────────────────────────────
+  const headersStore = await headers();
+  const ip = headersStore.get("x-forwarded-for")?.split(",")[0] || "127.0.0.1";
+  if (!checkRateLimit(ip, 5, 60000)) {
+    return {
+      error: "Quá nhiều yêu cầu đặt lại mật khẩu. Vui lòng thử lại sau 1 phút."
+    };
+  }
 
   if (!token) {
     return { error: "Token không hợp lệ hoặc thiếu." };

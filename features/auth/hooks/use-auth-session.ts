@@ -37,7 +37,6 @@ export function useRegisterForm() {
  */
 export function useAuthSession() {
   const [user, setUser] = useState<DomainUser | null>(null);
-  const [accessToken, setAccessToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -58,20 +57,17 @@ export function useAuthSession() {
 
       if (!response.ok) {
         setUser(null);
-        setAccessToken(null);
         setLoading(false);
         return;
       }
 
       const data = await response.json();
       setUser(data.user || null);
-      setAccessToken(data.accessToken || null);
       setError(null);
     } catch (err) {
       console.error("Failed to fetch auth session:", err);
       setError(err instanceof Error ? err.message : "Failed to fetch session");
       setUser(null);
-      setAccessToken(null);
     } finally {
       setLoading(false);
     }
@@ -90,7 +86,7 @@ export function useAuthSession() {
     };
   }, [fetchUser]);
 
-  return { user, accessToken, loading, error };
+  return { user, loading, error };
 }
 
 // ─── Legacy alias ─────────────────────────────────────────────────────────────

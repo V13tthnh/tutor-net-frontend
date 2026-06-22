@@ -108,8 +108,8 @@ export function TutorCvModal({
     setPreviewSrc(null);
   }, [open, tutor, tutorDetail]);
 
-  const hasDetail = !!tutorDetail;
-  const activeTutor = tutorDetail || tutor;
+  const hasDetail = !!tutorDetail && 'fullName' in tutorDetail;
+  const activeTutor = hasDetail ? tutorDetail : tutor;
 
   // Availability schedule parsing
   const schedule = useMemo(() => {
@@ -169,7 +169,14 @@ export function TutorCvModal({
   const age = hasDetail
     ? (tutorDetail.graduationYear ? (24 - (2027 - tutorDetail.graduationYear)) : 24)
     : (tutor?.age || 24);
-  const gender = hasDetail ? 'Nam' : (tutor?.gender || 'Nam');
+  const genderMap: Record<string, string> = {
+    'MALE': 'Nam',
+    'FEMALE': 'Nữ',
+    'OTHER': 'Khác'
+  };
+  const gender = hasDetail
+    ? (genderMap[(tutorDetail as any).gender] || (tutorDetail as any).gender || 'Khác')
+    : (tutor?.gender || 'Nam');
   const experienceYears = hasDetail ? tutorDetail.experienceYears : (tutor?.experience_years || 1);
   const province = hasDetail ? tutorDetail.province : (tutor?.province || 'Hà Nội');
   const provincesDetail = (tutor as any)?.provincesDetail;

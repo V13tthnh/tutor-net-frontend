@@ -10,6 +10,8 @@ import {
   sanitizeText,
   type FieldErrors,
 } from "../lib/login-validation";
+import { checkRateLimit } from "@/lib/rate-limiter";
+import { headers } from "next/headers";
 
 // ─── State ────────────────────────────────────────────────────────────────────
 
@@ -54,6 +56,16 @@ export async function adminLoginAction(
 
   // Sanitize email để prefill an toàn (chống Reflected XSS)
   const emailSafe = sanitizeText(email);
+
+  // ── Rate Limiting ─────────────────────────────────────────────────────────
+  const headersStore = await headers();
+  const ip = headersStore.get("x-forwarded-for")?.split(",")[0] || "127.0.0.1";
+  if (!checkRateLimit(ip, 5, 60000)) {
+    return {
+      error: "Quá nhiều yêu cầu đăng nhập. Vui lòng thử lại sau 1 phút.",
+      email: emailSafe,
+    };
+  }
 
   // ── Validate redirectTo — chặn Open Redirect ──────────────────────────────
   const redirectTo = validateRedirectTo(rawRedirect, AUTH_CONFIG.ROUTES.ADMIN.DASHBOARD);
