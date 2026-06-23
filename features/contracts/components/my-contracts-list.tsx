@@ -720,8 +720,11 @@ export default function MyContractsList() {
       </div>
 
       {/* Clickwrap Signature Modal */}
-      <Dialog open={!!signingContract} onOpenChange={(open) => !open && setSigningContract(null)}>
-        <DialogContent className="flex w-[95vw] max-w-4xl flex-col overflow-hidden rounded-xl border bg-card p-0 gap-0 shadow-2xl [&>button]:hidden">
+      <Dialog open={!!signingContract} onOpenChange={(open) => {
+        if (signMutation.isPending) return;
+        if (!open) setSigningContract(null);
+      }}>
+        <DialogContent className="flex !h-[90vh] !w-[95vw] !max-w-5xl flex-col overflow-hidden rounded-lg border bg-background p-0 gap-0 shadow-2xl [&>button]:hidden">
           <DialogTitle className="sr-only">Hợp đồng dịch vụ và nhận lớp học</DialogTitle>
 
           {/* Dialog Header */}
@@ -732,9 +735,13 @@ export default function MyContractsList() {
             </span>
             <button
               type="button"
-              onClick={() => setSigningContract(null)}
+              onClick={() => {
+                if (signMutation.isPending) return;
+                setSigningContract(null);
+              }}
               aria-label="Đóng"
-              className="rounded-full p-1.5 transition-colors hover:bg-primary-foreground/10 text-primary-foreground cursor-pointer"
+              disabled={signMutation.isPending}
+              className="rounded-full p-1.5 transition-colors hover:bg-primary-foreground/10 text-primary-foreground cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Icons.close size={18} />
             </button>
@@ -742,7 +749,7 @@ export default function MyContractsList() {
 
           {/* Legal document terms block */}
           {signingContract && (
-            <div className="p-6 overflow-y-auto max-h-[70vh] bg-neutral-100 dark:bg-neutral-900/40 text-neutral-800 dark:text-neutral-200">
+            <div className="p-6 overflow-y-auto flex-1 min-h-0 bg-neutral-100 dark:bg-neutral-900/40 text-neutral-800 dark:text-neutral-200">
               <div className="bg-white dark:bg-neutral-950 p-6 sm:p-8 rounded-lg shadow-sm border font-serif max-w-[900px] mx-auto text-[13px] sm:text-[14px] leading-relaxed text-black dark:text-neutral-100 text-justify">
                 {/* Quốc hiệu */}
                 <div className="flex flex-col sm:flex-row justify-between gap-4 border-b border-neutral-300 dark:border-neutral-800 pb-4 mb-6 font-sans text-xs">
@@ -940,8 +947,7 @@ export default function MyContractsList() {
             </div>
           )}
 
-          {/* Verification check & Actions */}
-          <DialogFooter className="px-6 py-4 bg-muted/20 border-t flex flex-col sm:flex-row items-center justify-between gap-4 rounded-b-xl">
+          <div className="px-6 py-4 bg-muted/20 border-t flex flex-col sm:flex-row items-center justify-between gap-4 rounded-b-xl">
             <div className="flex items-start gap-2.5 max-w-lg text-left">
               <Checkbox
                 id="terms"
@@ -982,7 +988,7 @@ export default function MyContractsList() {
                 )}
               </Button>
             </div>
-          </DialogFooter>
+          </div>
         </DialogContent>
       </Dialog>
     </>

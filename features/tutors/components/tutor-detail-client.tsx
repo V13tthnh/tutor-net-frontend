@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { tutorByIdOptions } from '../api/queries';
 import { publicTutorReviewsQueryOptions } from '@/features/reviews/api/queries';
 import { TutorInviteModal } from './tutor-invite-modal';
+import { useAuthSession } from '@/features/auth/hooks/use-auth-session';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
@@ -83,6 +84,7 @@ function TeachingMethodBadge({ method }: { method: string }) {
 }
 
 export function TutorDetailClient({ id }: TutorDetailClientProps) {
+  const { user } = useAuthSession();
   const { data, isLoading, isError } = useQuery(tutorByIdOptions(id));
   const { data: reviews = [] } = useQuery(publicTutorReviewsQueryOptions(id));
   const [inviteOpen, setInviteOpen] = useState(false);
@@ -368,14 +370,22 @@ export function TutorDetailClient({ id }: TutorDetailClientProps) {
                   </div>
                 </div>
 
-                <Button size='lg' className='w-full gap-2 text-base' onClick={() => setInviteOpen(true)}>
-                  <IconMessageCircle size={20} />
-                  Mời gia sư dạy học
-                </Button>
-                <Button size='lg' variant='outline' className='mt-3 w-full gap-2 text-base' onClick={() => setInviteOpen(true)}>
-                  <IconCalendar size={20} />
-                  Đặt lịch học thử
-                </Button>
+                {user && tutor && user.id === tutor.userId ? (
+                  <div className='rounded-xl border border-amber-200/60 bg-amber-50/50 p-4 text-center dark:bg-amber-900/10 dark:border-amber-900/40 text-amber-800 dark:text-amber-300 text-xs font-semibold leading-relaxed'>
+                    Đây là hồ sơ gia sư của bạn. Bạn không thể tự mời giảng dạy chính mình.
+                  </div>
+                ) : (
+                  <>
+                    <Button size='lg' className='w-full gap-2 text-base' onClick={() => setInviteOpen(true)}>
+                      <IconMessageCircle size={20} />
+                      Mời gia sư dạy học
+                    </Button>
+                    <Button size='lg' variant='outline' className='mt-3 w-full gap-2 text-base' onClick={() => setInviteOpen(true)}>
+                      <IconCalendar size={20} />
+                      Đặt lịch học thử
+                    </Button>
+                  </>
+                )}
 
                 <p className='text-muted-foreground mt-4 text-center text-xs'>
                   Bạn sẽ không bị tính phí cho đến khi lịch học thử được xác nhận.

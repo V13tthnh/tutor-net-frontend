@@ -3,6 +3,7 @@
 import { useState, useMemo, Fragment } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
+import { getClientSecurityFlags } from '@/features/security-sandbox/components/interceptor';
 import { useDebounce } from '@/hooks/use-debounce';
 import { myClassRequestsQueryOptions, classApplicationsQueryOptions } from '../api/queries';
 import type { ClassApplicationResponse, ClassRequestOwnFilters } from '../api/types';
@@ -561,18 +562,32 @@ export default function MyClassesList() {
         {/* Content area */}
         {totalElements === 0 ? (
           search || activeTab !== 'ALL' ? (
-            <div className="flex flex-col items-center justify-center py-16 text-center border border-dashed rounded-xl bg-muted/10 p-6">
-              <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center mb-4 text-muted-foreground">
-                <Icons.class size={24} />
-              </div>
-              <p className="text-foreground font-semibold text-sm">Không tìm thấy lớp học nào</p>
-              <p className="text-muted-foreground mt-1 text-xs max-w-sm">
-                Không tìm thấy kết quả nào phù hợp với bộ lọc hiện tại của bạn.
-              </p>
-              <Button onClick={handleClearFilters} variant="link" className="mt-2 text-xs text-primary font-bold">
-                Xóa tất cả bộ lọc và hiển thị tất cả
-              </Button>
-            </div>
+            (() => {
+              const flags = typeof window !== 'undefined' ? getClientSecurityFlags() : [];
+              const isHtmlInjectionActive = flags.includes('html_injection');
+              return (
+                <div className="flex flex-col items-center justify-center py-16 text-center border border-dashed rounded-xl bg-muted/10 p-6">
+                  <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center mb-4 text-muted-foreground">
+                    <Icons.class size={24} />
+                  </div>
+                  <p className="text-foreground font-semibold text-sm">
+                    Không tìm thấy lớp học nào {search ? (
+                      isHtmlInjectionActive ? (
+                        <span dangerouslySetInnerHTML={{ __html: search }} />
+                      ) : (
+                        <span>"{search}"</span>
+                      )
+                    ) : ''}
+                  </p>
+                  <p className="text-muted-foreground mt-1 text-xs max-w-sm">
+                    Không tìm thấy kết quả nào phù hợp với bộ lọc hiện tại của bạn.
+                  </p>
+                  <Button onClick={handleClearFilters} variant="link" className="mt-2 text-xs text-primary font-bold">
+                    Xóa tất cả bộ lọc và hiển thị tất cả
+                  </Button>
+                </div>
+              );
+            })()
           ) : (
             <div className="flex flex-col items-center justify-center py-20 text-center border border-dashed rounded-xl bg-muted/10 p-6">
               <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center mb-4 text-muted-foreground">

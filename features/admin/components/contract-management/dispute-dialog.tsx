@@ -64,7 +64,10 @@ export function DisputeDialog({ open, contract, onClose, onSuccess }: DisputeDia
   };
 
   return (
-    <Dialog open={open} onOpenChange={handleClose}>
+    <Dialog open={open} onOpenChange={(v) => {
+      if (loading) return;
+      if (!v) handleClose();
+    }}>
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-rose-600">
@@ -105,6 +108,7 @@ export function DisputeDialog({ open, contract, onClose, onSuccess }: DisputeDia
             <Select
               value={status}
               onValueChange={(val) => setStatus(val as 'CANCELLED' | 'VIOLATED')}
+              disabled={loading}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Chọn hành động" />
@@ -121,6 +125,7 @@ export function DisputeDialog({ open, contract, onClose, onSuccess }: DisputeDia
               id="refundFee"
               checked={refundFee}
               onCheckedChange={(checked) => setRefundFee(!!checked)}
+              disabled={loading}
             />
             <label
               htmlFor="refundFee"
@@ -138,6 +143,7 @@ export function DisputeDialog({ open, contract, onClose, onSuccess }: DisputeDia
               onChange={(e) => setReason(e.target.value)}
               className="resize-none text-sm"
               rows={4}
+              disabled={loading}
             />
             {!reason.trim() && (
               <div className="flex items-center gap-1.5 text-xs text-amber-600">

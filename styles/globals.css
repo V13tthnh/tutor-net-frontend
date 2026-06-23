@@ -89,3 +89,16 @@ input[type='password']::-webkit-credentials-auto-fill-button,
 input[type='password']::-webkit-textfield-decoration-container {
   display: none !important;
 }
+
+/* Custom smooth transitions for Sonner Toast alerts system-wide */
+[data-sonner-toaster] {
+  --toast-transition-duration: 550ms !important;
+  --toast-animation-duration: 550ms !important;
+}
+
+[data-sonner-toaster] [data-sonner-toast] {
+  transition: transform 550ms cubic-bezier(0.34, 1.56, 0.64, 1),
+              opacity 550ms cubic-bezier(0.16, 1, 0.3, 1),
+              height 550ms cubic-bezier(0.16, 1, 0.3, 1),
+              box-shadow 550ms cubic-bezier(0.16, 1, 0.3, 1) !important;
+}

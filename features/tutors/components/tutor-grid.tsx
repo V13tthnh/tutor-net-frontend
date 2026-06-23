@@ -10,6 +10,8 @@ import type { Tutor } from '@/constants/mock-api-tutors';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
+import { getClientSecurityFlags } from '@/features/security-sandbox/components/interceptor';
+
 function TutorCardSkeleton({ layout = 'grid' }: { layout?: 'grid' | 'list' }) {
   const isList = layout === 'list';
   return (
@@ -88,10 +90,22 @@ export function TutorGrid({ filters, onContactClick, onInviteClick }: TutorGridP
   }
 
   if (!data || data.tutors.length === 0) {
+    const flags = typeof window !== 'undefined' ? getClientSecurityFlags() : [];
+    const isHtmlInjectionActive = flags.includes('html_injection');
+    const searchVal = filters.search;
+
     return (
       <div className='flex flex-col items-center justify-center py-20 text-center'>
         <IconUsersGroup size={48} className='text-muted-foreground mb-4' />
-        <p className='text-foreground text-lg font-semibold'>Không tìm thấy gia sư</p>
+        <p className='text-foreground text-lg font-semibold'>
+          Không tìm thấy gia sư {searchVal ? (
+            isHtmlInjectionActive ? (
+              <span dangerouslySetInnerHTML={{ __html: searchVal }} />
+            ) : (
+              <span>"{searchVal}"</span>
+            )
+          ) : ''}
+        </p>
         <p className='text-muted-foreground mt-1 text-sm'>
           Thử thay đổi bộ lọc hoặc từ khóa tìm kiếm.
         </p>

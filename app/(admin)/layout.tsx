@@ -40,12 +40,6 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const defaultOpen = cookieStore.get('sidebar_state')?.value === 'true';
   return (
     <>
-      {/* <script
-        dangerouslySetInnerHTML={{
-          __html:
-            `try{localStorage.setItem('active_role','ADMIN');localStorage.setItem('active_user_id','999');localStorage.setItem('active_user_name',${JSON.stringify(userName)});localStorage.setItem('active_user_avatar',${JSON.stringify(userAvatar)})}catch(_){ }`
-        }}
-      /> */}
       <KBar>
         <SidebarProvider defaultOpen={defaultOpen}>
           <AppSidebar adminId={session.user.id} adminName={userName} adminAvatar={userAvatar} />

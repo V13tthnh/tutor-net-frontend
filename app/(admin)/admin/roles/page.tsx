@@ -15,12 +15,12 @@ export default async function Page(props: PageProps) {
 
   return (
     <PageContainer
-      pageTitle='Roles & Permissions'
-      pageDescription='Manage system roles and their permissions'
+      pageTitle='Quản lý vai trò'
+      pageDescription='Quản lý vai trò và quyền hạn'
       pageHeaderAction={
         <Link href="/admin/roles/new">
           <Button>
-            <Icons.add className="mr-2 h-4 w-4" /> Thêm Quyền
+            <Icons.add className="mr-2 h-4 w-4" /> Thêm Vai trò
           </Button>
         </Link>
       }

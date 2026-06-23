@@ -169,7 +169,6 @@ export default function InvitationsPage() {
     const handleReject = useCallback(async (invite: Invitation) => {
         if (rejectingId !== null) return;
         setRejectingId(invite.id);
-        setConfirmRejectInvite(null); // close confirm dialog
         try {
             await rejectInvitation(invite.id, rejectReason);
             toast.info(`Đã từ chối lời mời từ ${invite.studentName}.`);
@@ -186,6 +185,7 @@ export default function InvitationsPage() {
                 setSelectedInvite({ ...invite, status: 'REJECTED' });
             }
             setRejectReason("");
+            setConfirmRejectInvite(null); // close confirm dialog only on success
         } catch (err: any) {
             toast.error(err?.message || 'Có lỗi xảy ra khi từ chối lời mời.');
         } finally {
@@ -727,8 +727,10 @@ export default function InvitationsPage() {
             </Dialog >
 
             {/* ══ Reject Confirmation Dialog ══════════════════════════════════════ */}
-            < Dialog open={confirmRejectInvite !== null
-            } onOpenChange={(v) => !v && setConfirmRejectInvite(null)}>
+            < Dialog open={confirmRejectInvite !== null} onOpenChange={(v) => {
+                if (rejectingId !== null) return;
+                if (!v) setConfirmRejectInvite(null);
+            }}>
                 <DialogContent className='w-[95vw] max-w-md rounded-xl border bg-card p-0 gap-0 shadow-2xl [&>button]:hidden'>
                     <DialogTitle className='sr-only'>Xác nhận từ chối lời mời</DialogTitle>
 
@@ -742,7 +744,8 @@ export default function InvitationsPage() {
                             type='button'
                             onClick={() => setConfirmRejectInvite(null)}
                             aria-label='Đóng'
-                            className='rounded-full p-1.5 hover:bg-white/10 transition-colors cursor-pointer'
+                            disabled={rejectingId !== null}
+                            className='rounded-full p-1.5 hover:bg-white/10 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed'
                         >
                             <Icons.close size={18} />
                         </button>
@@ -772,10 +775,11 @@ export default function InvitationsPage() {
                                 </label>
                                 <textarea
                                     id="reject-reason-input"
-                                    className="w-full min-h-[90px] rounded-lg border border-input bg-background px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring font-sans"
+                                    className="w-full min-h-[90px] rounded-lg border border-input bg-background px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring font-sans disabled:opacity-50 disabled:cursor-not-allowed"
                                     placeholder="Ví dụ: Lịch dạy không phù hợp, đã kín lịch..."
                                     value={rejectReason}
                                     onChange={(e) => setRejectReason(e.target.value)}
+                                    disabled={rejectingId !== null}
                                 />
                             </div>
                         </div>
@@ -786,13 +790,14 @@ export default function InvitationsPage() {
                         <Button
                             variant='outline'
                             className='h-9 px-5 cursor-pointer text-xs'
+                            disabled={rejectingId !== null}
                             onClick={() => setConfirmRejectInvite(null)}
                         >
                             Hủy bỏ
                         </Button>
                         <Button
                             className='h-9 px-5 gap-2 bg-rose-600 hover:bg-rose-700 text-white border-0 cursor-pointer text-xs'
-                            disabled={rejectingId === confirmRejectInvite?.id}
+                            disabled={rejectingId !== null}
                             onClick={() => confirmRejectInvite && handleReject(confirmRejectInvite)}
                         >
                             {rejectingId === confirmRejectInvite?.id
@@ -805,8 +810,11 @@ export default function InvitationsPage() {
             </Dialog >
 
             {/* ══ Contract Preview & Sign Dialog ══════════════════════════════════ */}
-            < Dialog open={contractPreviewInvite !== null} onOpenChange={(v) => !v && setContractPreviewInvite(null)}>
-                <DialogContent className='flex w-[95vw] max-w-4xl flex-col overflow-hidden rounded-xl border bg-card p-0 gap-0 shadow-2xl [&>button]:hidden'>
+            < Dialog open={contractPreviewInvite !== null} onOpenChange={(v) => {
+                if (acceptingId !== null) return;
+                if (!v) setContractPreviewInvite(null);
+            }}>
+                <DialogContent className='flex !h-[90vh] !w-[95vw] !max-w-5xl flex-col overflow-hidden rounded-lg border bg-background p-0 gap-0 shadow-2xl [&>button]:hidden'>
                     <DialogTitle className='sr-only'>Hợp đồng dịch vụ và nhận lớp học</DialogTitle>
 
                     {/* Dialog Header */}
@@ -819,14 +827,15 @@ export default function InvitationsPage() {
                             type='button'
                             onClick={() => setContractPreviewInvite(null)}
                             aria-label='Đóng'
-                            className='rounded-full p-1.5 transition-colors hover:bg-primary-foreground/10 text-primary-foreground cursor-pointer'
+                            disabled={acceptingId !== null}
+                            className='rounded-full p-1.5 transition-colors hover:bg-primary-foreground/10 text-primary-foreground cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed'
                         >
                             <Icons.close size={18} />
                         </button>
                     </header>
 
                     {/* Dialog Body */}
-                    <div className='p-6 overflow-y-auto max-h-[70vh] bg-neutral-100 dark:bg-neutral-900/40 text-neutral-800 dark:text-neutral-200'>
+                    <div className='p-6 overflow-y-auto flex-1 min-h-0 bg-neutral-100 dark:bg-neutral-900/40 text-neutral-800 dark:text-neutral-200'>
                         {loadingPreview ? (
                             <div className='flex flex-col items-center justify-center py-20 gap-3'>
                                 <Icons.spinner className='h-8 w-8 animate-spin text-primary' />
@@ -1036,8 +1045,7 @@ export default function InvitationsPage() {
                         )}
                     </div>
 
-                    {/* Dialog Footer */}
-                    <DialogFooter className='px-6 py-4 bg-muted/20 border-t flex flex-col sm:flex-row items-center justify-between gap-4 rounded-b-xl'>
+                    <div className='px-6 py-4 bg-muted/20 border-t flex flex-col sm:flex-row items-center justify-between gap-4 rounded-b-xl'>
                         <div className='flex items-start gap-2.5 max-w-lg text-left'>
                             <input
                                 type='checkbox'
@@ -1045,7 +1053,7 @@ export default function InvitationsPage() {
                                 checked={isAgreed}
                                 onChange={(e) => setIsAgreed(e.target.checked)}
                                 className='h-4 w-4 shrink-0 rounded border-neutral-300 text-primary focus:ring-primary mt-0.5 cursor-pointer dark:border-neutral-700'
-                                disabled={loadingPreview || !previewData}
+                                disabled={loadingPreview || !previewData || acceptingId !== null}
                             />
                             <label
                                 htmlFor='isAgreedContract'
@@ -1059,6 +1067,7 @@ export default function InvitationsPage() {
                             <Button
                                 variant='outline'
                                 className='h-9 px-4 cursor-pointer text-xs'
+                                disabled={acceptingId !== null}
                                 onClick={() => setContractPreviewInvite(null)}
                             >
                                 Hủy bỏ
@@ -1081,7 +1090,7 @@ export default function InvitationsPage() {
                                 )}
                             </Button>
                         </div>
-                    </DialogFooter>
+                    </div>
                 </DialogContent>
             </Dialog >
         </>

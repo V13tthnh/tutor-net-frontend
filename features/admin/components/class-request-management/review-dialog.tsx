@@ -55,7 +55,10 @@ export function ReviewDialog({ open, request, action, onClose, onSuccess }: Revi
     : 'Vui lòng nhập lý do từ chối';
 
   return (
-    <Dialog open={open} onOpenChange={onClose}>
+    <Dialog open={open} onOpenChange={(v) => {
+      if (mutation.isPending) return;
+      if (!v) onClose();
+    }}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
@@ -86,6 +89,7 @@ export function ReviewDialog({ open, request, action, onClose, onSuccess }: Revi
                 onChange={(e) => setRejectionReason(e.target.value)}
                 className="resize-none"
                 rows={4}
+                disabled={mutation.isPending}
               />
               {!rejectionReason && (
                 <div className="flex items-center gap-2 text-xs text-yellow-600">

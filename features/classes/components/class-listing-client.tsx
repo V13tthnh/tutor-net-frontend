@@ -9,6 +9,7 @@ import type { ClassFilters as ClassFiltersType, ClassRequest } from '../api/type
 import { useAuthSession } from '@/features/auth/hooks/use-auth-session';
 import { applyForClassRequest } from '../api/service';
 import { toast } from 'sonner';
+import { apiClient } from '@/lib/api-client';
 
 interface ClassListingClientProps {
   filters: ClassFiltersType;
@@ -19,7 +20,7 @@ export function ClassListingClient({ filters }: ClassListingClientProps) {
   const [applyClass, setApplyClass] = useState<ClassRequest | null>(null);
   const { user } = useAuthSession();
 
-  const handleApplyClick = (classRequest: ClassRequest) => {
+  const handleApplyClick = async (classRequest: ClassRequest) => {
     if (!user) {
       toast.error('Vui lòng đăng nhập để ứng tuyển nhận lớp!', {
         description: 'Bạn cần có tài khoản Gia sư để ứng tuyển.',
@@ -46,7 +47,48 @@ export function ClassListingClient({ filters }: ClassListingClientProps) {
       return;
     }
 
-    setApplyClass(classRequest);
+    const toastId = toast.loading('Đang kiểm tra trạng thái hồ sơ gia sư...');
+
+    try {
+      const profile = await apiClient<any>('/tutor/profile/me');
+      const status = profile?.status || profile?.data?.status;
+
+      if (status !== 'APPROVED') {
+        toast.error('Hồ sơ gia sư của bạn chưa được phê duyệt!', {
+          id: toastId,
+          description: 'Vui lòng đợi ban quản trị duyệt hồ sơ trước khi nhận lớp.',
+          action: {
+            label: 'Xem hồ sơ',
+            onClick: () => {
+              window.location.href = '/account/new-cv';
+            },
+          },
+        });
+        return;
+      }
+
+      toast.dismiss(toastId);
+      setApplyClass(classRequest);
+    } catch (err: any) {
+      console.error(err);
+      const isNotFound = err.message?.includes('404') || err.message?.toLowerCase().includes('không tìm thấy');
+      if (isNotFound) {
+        toast.error('Không tìm thấy hồ sơ gia sư của bạn!', {
+          id: toastId,
+          description: 'Vui lòng tạo hồ sơ gia sư trước khi nhận lớp.',
+          action: {
+            label: 'Tạo hồ sơ',
+            onClick: () => {
+              window.location.href = '/account/new-cv';
+            },
+          },
+        });
+      } else {
+        toast.error(err.message || 'Không thể xác thực hồ sơ gia sư. Vui lòng thử lại sau.', {
+          id: toastId,
+        });
+      }
+    }
   };
 
   const handleApplySubmit = async (classRequestId: number, message: string) => {

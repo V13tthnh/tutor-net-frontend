@@ -18,6 +18,7 @@ import { toast } from 'sonner';
 import { adminContractsQueryOptions } from '../../api/queries';
 import { confirmContractPayment, getContractsForExport } from '../../api/service';
 import { DisputeDialog } from './dispute-dialog';
+import { PaymentConfirmationDialog } from './payment-confirmation-dialog';
 import type { AdminContractResponse, AdminContractFilters, AdminContractStatus } from '../../api/types';
 import { ContractTableToolbar } from './contract-table-toolbar';
 import { ContractTableRow } from './contract-table-row';
@@ -31,6 +32,7 @@ export function ContractManagementTable() {
 
   // Dialog states
   const [disputeOpen, setDisputeOpen] = useState(false);
+  const [paymentConfirmOpen, setPaymentConfirmOpen] = useState(false);
   const [selectedContract, setSelectedContract] = useState<AdminContractResponse | null>(null);
 
   // Sync / validate parameters on mount
@@ -136,25 +138,7 @@ export function ContractManagementTable() {
     updateQuery({ page: pageNum });
   };
 
-  const isKetKyActive = statusSelected.has('PENDING_SIGNATURE') && sortBy === 'createdAt' && sortDir === 'asc';
 
-  const handleToggleKetKy = () => {
-    if (isKetKyActive) {
-      updateQuery({
-        status: null,
-        sortBy: 'createdAt',
-        sortDir: 'desc',
-        page: 1,
-      });
-    } else {
-      updateQuery({
-        status: 'PENDING_SIGNATURE',
-        sortBy: 'createdAt',
-        sortDir: 'asc',
-        page: 1,
-      });
-    }
-  };
 
   const filters: AdminContractFilters = useMemo(
     () => ({
@@ -178,15 +162,22 @@ export function ContractManagementTable() {
     onSuccess: (res) => {
       toast.success(res.message || 'Xác nhận đã thu phí hợp đồng thành công.');
       queryClient.invalidateQueries({ queryKey: ['admin-contracts'] });
+      setPaymentConfirmOpen(false);
+      setSelectedContract(null);
     },
     onError: (err: any) => {
       toast.error(err.message || 'Lỗi khi xác nhận đóng phí.');
     },
   });
 
-  const handleConfirmPayment = (contract: AdminContractResponse) => {
-    if (confirm(`Bạn có chắc chắn muốn xác nhận đã thu phí nhận lớp cho hợp đồng ${contract.contractNumber}?`)) {
-      confirmPaymentMutation.mutate(contract.id);
+  const handleConfirmPaymentClick = (contract: AdminContractResponse) => {
+    setSelectedContract(contract);
+    setPaymentConfirmOpen(true);
+  };
+
+  const handleConfirmPayment = () => {
+    if (selectedContract) {
+      confirmPaymentMutation.mutate(selectedContract.id);
     }
   };
 
@@ -240,8 +231,6 @@ export function ContractManagementTable() {
           onSearchChange={setSearch}
           isLoading={isLoading}
           debouncedSearch={debouncedSearch}
-          isKetKyActive={isKetKyActive}
-          onToggleKetKy={handleToggleKetKy}
           isExporting={isExporting}
           onExport={handleExport}
           statusSelected={statusSelected}
@@ -297,7 +286,7 @@ export function ContractManagementTable() {
                   <ContractTableRow
                     key={contract.id}
                     contract={contract}
-                    onConfirmPayment={handleConfirmPayment}
+                    onConfirmPayment={handleConfirmPaymentClick}
                     onDisputeClick={(c) => {
                       setSelectedContract(c);
                       setDisputeOpen(true);
@@ -331,6 +320,18 @@ export function ContractManagementTable() {
           onSuccess={() => {
             queryClient.invalidateQueries({ queryKey: ['admin-contracts'] });
           }}
+        />
+
+        {/* Payment Confirmation Dialog */}
+        <PaymentConfirmationDialog
+          open={paymentConfirmOpen}
+          contract={selectedContract}
+          onClose={() => {
+            setPaymentConfirmOpen(false);
+            setSelectedContract(null);
+          }}
+          onConfirm={handleConfirmPayment}
+          loading={confirmPaymentMutation.isPending}
         />
       </div>
     </TooltipProvider>

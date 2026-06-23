@@ -45,6 +45,7 @@ function mapBackendTutorToTutor(p: any): Tutor {
 
   return {
     id: p.id,
+    userId: p.userId || null,
     first_name,
     last_name,
     avatar_url: p.avatarUrl || '',

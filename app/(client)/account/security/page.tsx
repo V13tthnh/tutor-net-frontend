@@ -233,7 +233,7 @@ export default function SecurityPage() {
             </ScrollReveal>
 
             {/* ─── XÁC THỰC 2 YẾU TỐ ─── */}
-            <ScrollReveal variant='fade-up' delay={100} duration={650} threshold={0.05}>
+            {/* <ScrollReveal variant='fade-up' delay={100} duration={650} threshold={0.05}>
                 <div className='rounded-2xl border bg-card shadow-sm p-6'>
                     <h2 className='text-lg font-bold mb-1'>Xác thực 2 yếu tố (2FA)</h2>
                     <p className='text-sm text-muted-foreground mb-4'>Tăng cường bảo mật cho tài khoản bằng cách yêu cầu mã xác minh mỗi khi đăng nhập</p>
@@ -251,10 +251,10 @@ export default function SecurityPage() {
                         <Switch disabled />
                     </div>
                 </div>
-            </ScrollReveal>
+            </ScrollReveal> */}
 
             {/* ─── XOÁ TÀI KHOẢN ─── */}
-            <ScrollReveal variant='fade-up' delay={200} duration={650} threshold={0.05}>
+            {/* <ScrollReveal variant='fade-up' delay={200} duration={650} threshold={0.05}>
                 <div className='rounded-2xl border bg-card shadow-sm p-6'>
                     <div className='flex flex-col sm:flex-row gap-5 items-start'>
                         <div className='flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/40'>
@@ -327,7 +327,7 @@ export default function SecurityPage() {
                         </div>
                     </div>
                 </div>
-            </ScrollReveal>
+            </ScrollReveal> */}
         </div>
     );
 }

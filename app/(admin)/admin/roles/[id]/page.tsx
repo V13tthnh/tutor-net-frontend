@@ -11,8 +11,8 @@ export default async function Page(props: PageProps) {
 
   return (
     <PageContainer
-      pageTitle={isCreate ? 'Create Role' : 'Edit Role'}
-
+      pageTitle={isCreate ? ' Tạo vai trò mới' : 'Chi tiết vai trò'}
+      pageDescription={isCreate ? 'Tạo vai trò mới' : 'Chi tiết vai trò'}
     >
       <RoleViewPage roleId={id} />
     </PageContainer>

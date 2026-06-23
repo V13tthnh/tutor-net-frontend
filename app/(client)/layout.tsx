@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { SecuritySandboxInterceptor } from '@/features/security-sandbox/components/interceptor';
 
 export const metadata: Metadata = {
   title: 'TutorNet - Nền tảng kết nối gia sư',
@@ -12,5 +13,10 @@ export const metadata: Metadata = {
 };
 
 export default function PublicLayout({ children }: { children: React.ReactNode }) {
-  return <>{children}</>;
+  return (
+    <>
+      <SecuritySandboxInterceptor />
+      {children}
+    </>
+  );
 }

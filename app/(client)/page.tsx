@@ -1,7 +1,4 @@
 import type { Metadata } from 'next';
-import { HydrationBoundary, dehydrate } from '@tanstack/react-query';
-import { getQueryClient } from '@/lib/query-client';
-import { featuredTutorsQueryOptions } from '@/features/tutors/api/queries';
 import { HomePageClient } from '@/features/tutors/components/home-page-client';
 import { getFeaturedTutors } from '@/features/tutors/api/service';
 

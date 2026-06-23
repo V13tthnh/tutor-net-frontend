@@ -6,6 +6,15 @@ import { getSessionFromCookies, hasAdminRole } from '@/features/auth/lib/auth.ut
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
+  // Exclude static assets or files
+  if (
+    pathname.startsWith('/_next') ||
+    pathname.includes('.')
+  ) {
+    return NextResponse.next();
+  }
+
+  // 1. Check admin access to admin portal
   if (pathname.startsWith('/admin')) {
     const session = getSessionFromCookies(request.cookies, 'admin');
     if (!session || !hasAdminRole(session.user)) {
@@ -15,12 +24,25 @@ export function middleware(request: NextRequest) {
     }
   }
 
+  // 2. Check client account access
   if (pathname.startsWith('/account')) {
     const session = getSessionFromCookies(request.cookies, 'client');
     if (!session) {
       const loginUrl = new URL('/auth/login', request.url);
       loginUrl.searchParams.set('redirectTo', pathname);
       return NextResponse.redirect(loginUrl);
+    }
+  }
+
+  // 3. If logged in as admin/super_admin and trying to access client pages, redirect to admin dashboard
+  if (
+    !pathname.startsWith('/admin') &&
+    !pathname.startsWith('/auth/admin') &&
+    !pathname.startsWith('/api')
+  ) {
+    const adminSession = getSessionFromCookies(request.cookies, 'admin');
+    if (adminSession && hasAdminRole(adminSession.user)) {
+      return NextResponse.redirect(new URL('/admin/dashboard', request.url));
     }
   }
 
@@ -34,5 +56,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/admin/:path*', '/account/:path*']
+  matcher: ['/((?!api|_next/static|_next/image|favicon.ico).*)']
 };

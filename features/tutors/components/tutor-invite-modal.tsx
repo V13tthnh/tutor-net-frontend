@@ -206,16 +206,19 @@ function formatClassRequestLabel(cr: ClassRequest): string {
 function LoggedInInviteModal({
   tutor,
   onClose,
+  submitting,
+  setSubmitting,
 }: {
   tutor: Tutor;
   onClose: () => void;
+  submitting: boolean;
+  setSubmitting: (v: boolean) => void;
 }) {
   const { user } = useAuthSession();
   const [classRequests, setClassRequests] = useState<ClassRequestDropdown[]>([]);
   const [loadingCR, setLoadingCR] = useState(true);
   const [selectedCRId, setSelectedCRId] = useState<string>('');
   const [message, setMessage] = useState('');
-  const [submitting, setSubmitting] = useState(false);
 
   // Fetch user's class requests
   useEffect(() => {
@@ -315,6 +318,7 @@ function LoggedInInviteModal({
             onValueChange={setSelectedCRId}
             options={crOptions}
             placeholder='Chọn lớp học...'
+            disabled={submitting}
           />
         )}
       </div>
@@ -401,7 +405,17 @@ function LoggedInInviteModal({
 // ═══════════════════════════════════════════════════════════════════════════════
 // MODE B: Modal đầy đủ khi CHƯA ĐĂNG NHẬP
 // ═══════════════════════════════════════════════════════════════════════════════
-function GuestInviteModal({ tutor, onClose }: { tutor: Tutor; onClose: () => void }) {
+function GuestInviteModal({
+  tutor,
+  onClose,
+  submitting,
+  setSubmitting,
+}: {
+  tutor: Tutor;
+  onClose: () => void;
+  submitting: boolean;
+  setSubmitting: (v: boolean) => void;
+}) {
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [subjectsLoading, setSubjectsLoading] = useState(true);
   const [selectedSubjects, setSelectedSubjects] = useState<SubjectSelection[]>([]);
@@ -410,7 +424,6 @@ function GuestInviteModal({ tutor, onClose }: { tutor: Tutor; onClose: () => voi
   const [loadingProvinces, setLoadingProvinces] = useState(false);
   const [districts, setDistricts] = useState<{ name: string; code: number }[]>([]);
   const [loadingDistricts, setLoadingDistricts] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
 
   const [state, dispatch] = useReducer(guestReducer, { form: EMPTY_GUEST, errors: {} });
   const { form, errors } = state;
@@ -477,18 +490,20 @@ function GuestInviteModal({ tutor, onClose }: { tutor: Tutor; onClose: () => voi
   );
 
   const toggleSubject = useCallback((sub: Pick<Subject, 'id' | 'name'>) => {
+    if (submitting) return;
     setSelectedSubjects((prev) => {
       const exists = prev.find((s) => s.id === sub.id);
       if (exists) return prev.filter((s) => s.id !== sub.id);
       return [...prev, { id: sub.id, name: sub.name, proposedPrice: '' }];
     });
-  }, []);
+  }, [submitting]);
 
   const setSubjectPrice = useCallback((id: number, price: string) => {
+    if (submitting) return;
     setSelectedSubjects((prev) => prev.map((s) => (s.id === id ? { ...s, proposedPrice: price } : s)));
-  }, []);
+  }, [submitting]);
 
-  const validate = (f: GuestForm, subjCount: number) => {
+  const validate = (f: GuestForm, currentSelectedSubjects: SubjectSelection[]) => {
     const errs: Record<string, string> = {};
     if (!f.contactName.trim()) errs.contactName = 'Vui lòng nhập họ tên';
     if (!f.contactPhone.trim()) errs.contactPhone = 'Vui lòng nhập số điện thoại';
@@ -497,7 +512,24 @@ function GuestInviteModal({ tutor, onClose }: { tutor: Tutor; onClose: () => voi
     if (!f.contactEmail.trim()) errs.contactEmail = 'Vui lòng nhập email';
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(f.contactEmail.trim()))
       errs.contactEmail = 'Email không hợp lệ';
-    if (subjCount === 0) errs.subjects = 'Vui lòng chọn ít nhất 1 môn học';
+    
+    if (currentSelectedSubjects.length === 0) {
+      errs.subjects = 'Vui lòng chọn ít nhất 1 môn học';
+    } else {
+      const hasEmptyPrice = currentSelectedSubjects.some(sub => !sub.proposedPrice.trim());
+      if (hasEmptyPrice) {
+        errs.proposedPrice = 'Vui lòng nhập học phí đề xuất cho tất cả các môn đã chọn';
+      } else {
+        const hasInvalidPrice = currentSelectedSubjects.some(sub => {
+          const price = parseFloat(sub.proposedPrice);
+          return isNaN(price) || price <= 0;
+        });
+        if (hasInvalidPrice) {
+          errs.proposedPrice = 'Học phí đề xuất phải lớn hơn 0';
+        }
+      }
+    }
+
     if (!f.gradeLevel) errs.gradeLevel = 'Vui lòng chọn cấp độ';
     if (!f.teachingMode) errs.teachingMode = 'Vui lòng chọn hình thức học';
     return errs;
@@ -518,7 +550,7 @@ function GuestInviteModal({ tutor, onClose }: { tutor: Tutor; onClose: () => voi
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const errs = validate(form, selectedSubjects.length);
+    const errs = validate(form, selectedSubjects);
     if (Object.keys(errs).length > 0) {
       dispatch({ type: 'SET_ERRORS', errors: errs });
       // scroll to first error
@@ -699,7 +731,14 @@ function GuestInviteModal({ tutor, onClose }: { tutor: Tutor; onClose: () => voi
 
             {selectedSubjects.length > 0 && (
               <div className='rounded-lg border border-primary/20 bg-primary/5 p-3 space-y-2'>
-                <p className='text-xs font-semibold text-foreground'>Học phí đề xuất (VNĐ/tháng, tùy chọn)</p>
+                <p className='text-xs font-semibold text-foreground'>
+                  Học phí đề xuất <span className='text-destructive'>*</span> <span className='text-muted-foreground text-[10px] font-normal'>(VNĐ/tháng)</span>
+                </p>
+                {errors.proposedPrice && (
+                  <p data-invite-error='true' className='text-[11px] text-destructive'>
+                    {errors.proposedPrice}
+                  </p>
+                )}
                 <div className='space-y-2'>
                   {selectedSubjects.map((sub) => (
                     <div key={sub.id} className='flex items-center gap-2'>
@@ -713,13 +752,15 @@ function GuestInviteModal({ tutor, onClose }: { tutor: Tutor; onClose: () => voi
                           value={formatVND(sub.proposedPrice)}
                           onChange={(e) => setSubjectPrice(sub.id, parseVND(e.target.value))}
                           className='h-7 text-xs pr-8'
+                          disabled={submitting}
                         />
                         <span className='absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground pointer-events-none'>₫</span>
                       </div>
                       <button
                         type='button'
+                        disabled={submitting}
                         onClick={() => toggleSubject({ id: sub.id, name: sub.name })}
-                        className='text-muted-foreground hover:text-destructive transition-colors'
+                        className='text-muted-foreground hover:text-destructive transition-colors disabled:opacity-50'
                       >
                         <IconX size={13} />
                       </button>
@@ -788,6 +829,7 @@ function GuestInviteModal({ tutor, onClose }: { tutor: Tutor; onClose: () => voi
                   key={n}
                   type='button'
                   onClick={() => updateForm('sessionsPerWeek', n)}
+                  disabled={submitting}
                   className={cn(
                     'h-8 w-8 rounded-lg border text-xs font-bold transition-all',
                     form.sessionsPerWeek === n
@@ -809,6 +851,7 @@ function GuestInviteModal({ tutor, onClose }: { tutor: Tutor; onClose: () => voi
                   key={d}
                   type='button'
                   onClick={() => updateForm('durationMinutes', d)}
+                  disabled={submitting}
                   className={cn(
                     'h-8 px-2 rounded-lg border text-xs font-bold transition-all',
                     form.durationMinutes === d
@@ -843,7 +886,7 @@ function GuestInviteModal({ tutor, onClose }: { tutor: Tutor; onClose: () => voi
                 onValueChange={handleProvinceChange}
                 options={provinceOptions}
                 placeholder='Chọn tỉnh/TP'
-                disabled={loadingProvinces}
+                disabled={loadingProvinces || submitting}
               />
             </div>
 
@@ -857,7 +900,7 @@ function GuestInviteModal({ tutor, onClose }: { tutor: Tutor; onClose: () => voi
                 onValueChange={handleDistrictChange}
                 options={districtOptions}
                 placeholder='Chọn xã/phường'
-                disabled={loadingDistricts || !selectedProvinceCode}
+                disabled={loadingDistricts || !selectedProvinceCode || submitting}
               />
             </div>
           </div>
@@ -872,6 +915,7 @@ function GuestInviteModal({ tutor, onClose }: { tutor: Tutor; onClose: () => voi
               value={form.addressDetail}
               onChange={(e) => updateForm('addressDetail', e.target.value)}
               className='h-9 text-sm'
+              disabled={submitting}
             />
           </div>
         </fieldset>
@@ -929,9 +973,6 @@ function GuestInviteModal({ tutor, onClose }: { tutor: Tutor; onClose: () => voi
   );
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// MAIN: TutorInviteModal (router component)
-// ═══════════════════════════════════════════════════════════════════════════════
 interface TutorInviteModalProps {
   tutor: Tutor | null;
   open: boolean;
@@ -940,29 +981,31 @@ interface TutorInviteModalProps {
 
 export function TutorInviteModal({ tutor, open, onClose }: TutorInviteModalProps) {
   const { user, loading } = useAuthSession();
+  const [submitting, setSubmitting] = useState(false);
 
   if (!tutor) return null;
 
   const fullName = `${tutor.first_name} ${tutor.last_name}`;
   const isLoggedIn = !loading && !!user;
+  const isOwnProfile = user && tutor && user.id === tutor.userId;
 
   return (
-    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+    <Dialog open={open} onOpenChange={(v) => { if (submitting) return; if (!v) onClose(); }}>
       <DialogContent
         className='flex w-[95vw] max-w-lg flex-col overflow-hidden rounded-xl border bg-background p-0 gap-0 shadow-2xl [&>button]:hidden'
         hideCloseButton
       >
         <DialogTitle className='sr-only'>
-          {isLoggedIn ? 'Gửi lời mời gia sư' : 'Mời gia sư dạy học'} — {fullName}
+          {isOwnProfile ? 'Thông báo không thể tự mời' : isLoggedIn ? 'Gửi lời mời gia sư' : 'Mời gia sư dạy học'} — {fullName}
         </DialogTitle>
 
         {/* Header */}
         <header className='flex shrink-0 items-center justify-between px-5 py-3.5 bg-primary text-primary-foreground'>
           <div>
             <span className='font-bold text-sm tracking-wide'>
-              {isLoggedIn ? 'Gửi lời mời gia sư' : 'Mời gia sư dạy học'}
+              {isOwnProfile ? 'Thông báo' : isLoggedIn ? 'Gửi lời mời gia sư' : 'Mời gia sư dạy học'}
             </span>
-            {!isLoggedIn && (
+            {!isOwnProfile && !isLoggedIn && (
               <p className='text-[11px] text-primary-foreground/70 mt-0.5'>
                 Điền thông tin để tạo yêu cầu lớp học
               </p>
@@ -972,23 +1015,38 @@ export function TutorInviteModal({ tutor, open, onClose }: TutorInviteModalProps
             type='button'
             onClick={onClose}
             aria-label='Đóng'
-            className='rounded-full p-1.5 transition-colors hover:bg-primary-foreground/10 text-primary-foreground cursor-pointer'
+            disabled={submitting}
+            className='rounded-full p-1.5 transition-colors hover:bg-primary-foreground/10 text-primary-foreground cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed'
           >
             <IconX size={17} />
           </button>
         </header>
 
-        {/* Loading skeleton while checking auth */}
-        {loading ? (
+        {isOwnProfile ? (
+          <div className='p-6 text-center space-y-4'>
+            <div className='mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400'>
+              <IconX size={24} />
+            </div>
+            <div className='space-y-1.5'>
+              <h3 className='font-bold text-base text-foreground'>Không thể mời chính mình</h3>
+              <p className='text-sm text-muted-foreground leading-relaxed max-w-sm mx-auto'>
+                Bạn đang đăng nhập bằng tài khoản liên kết với hồ sơ gia sư <strong>{fullName}</strong> này. Hệ thống không cho phép gia sư tự mời dạy chính mình.
+              </p>
+            </div>
+            <Button onClick={onClose} className='w-full max-w-xs cursor-pointer h-10'>
+              Đóng cửa sổ
+            </Button>
+          </div>
+        ) : loading ? (
           <div className='p-5 space-y-3'>
             <div className='h-12 rounded-xl bg-muted animate-pulse' />
             <div className='h-9 rounded-lg bg-muted animate-pulse' />
             <div className='h-24 rounded-lg bg-muted animate-pulse' />
           </div>
         ) : isLoggedIn ? (
-          <LoggedInInviteModal tutor={tutor} onClose={onClose} />
+          <LoggedInInviteModal tutor={tutor} onClose={onClose} submitting={submitting} setSubmitting={setSubmitting} />
         ) : (
-          <GuestInviteModal tutor={tutor} onClose={onClose} />
+          <GuestInviteModal tutor={tutor} onClose={onClose} submitting={submitting} setSubmitting={setSubmitting} />
         )}
       </DialogContent>
     </Dialog>

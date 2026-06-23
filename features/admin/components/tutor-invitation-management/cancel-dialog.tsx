@@ -50,7 +50,10 @@ export function CancelInvitationDialog({ open, invitation, onClose, onSuccess }:
   };
 
   return (
-    <Dialog open={open} onOpenChange={handleClose}>
+    <Dialog open={open} onOpenChange={(v) => {
+      if (mutation.isPending) return;
+      if (!v) handleClose();
+    }}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
@@ -88,6 +91,7 @@ export function CancelInvitationDialog({ open, invitation, onClose, onSuccess }:
               onChange={(e) => setCancelReason(e.target.value)}
               className="resize-none"
               rows={4}
+              disabled={mutation.isPending}
             />
             {!cancelReason.trim() && (
               <div className="flex items-center gap-2 text-xs text-yellow-600">
