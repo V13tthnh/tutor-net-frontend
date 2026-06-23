@@ -119,13 +119,13 @@ export default function PublicSignInPage() {
             <p className='mt-1.5 text-sm text-muted-foreground'>
               Chưa có tài khoản?{' '}
               <Link href='/auth/register' className='text-primary font-semibold hover:underline'>
-                Đăng ký miễn phí
+                Đăng ký ngay
               </Link>
             </p>
           </div>
 
           {/* Social buttons */}
-          <div className='grid grid-cols-2 gap-3 mb-6'>
+          {/* <div className='grid grid-cols-2 gap-3 mb-6'>
             <Button variant='outline' type='button' className='gap-2 h-11'>
               <Icons.google size={17} />
               Google
@@ -134,14 +134,14 @@ export default function PublicSignInPage() {
               <Icons.facebook size={17} className='text-blue-600' />
               Facebook
             </Button>
-          </div>
+          </div> */}
 
           {/* Divider */}
-          <div className='relative mb-6 flex items-center gap-3'>
+          {/* <div className='relative mb-6 flex items-center gap-3'>
             <div className='flex-1 border-t border-border' />
             <span className='text-xs text-muted-foreground'>hoặc đăng nhập với email</span>
             <div className='flex-1 border-t border-border' />
-          </div>
+          </div> */}
 
           {/* Form */}
           <form action={formAction} className='space-y-4' noValidate>

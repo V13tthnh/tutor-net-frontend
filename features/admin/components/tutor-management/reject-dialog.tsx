@@ -35,7 +35,10 @@ export function RejectDialog({ tutors, open, onOpenChange, onConfirm }: RejectDi
     };
 
     return (
-        <Dialog open={open} onOpenChange={onOpenChange}>
+        <Dialog open={open} onOpenChange={(v) => {
+            if (submitting) return;
+            onOpenChange(v);
+        }}>
             <DialogContent className='max-w-md'>
                 <DialogHeader>
                     <div className='flex items-center gap-3 mb-1'>
@@ -69,7 +72,7 @@ export function RejectDialog({ tutors, open, onOpenChange, onConfirm }: RejectDi
                             <Icons.list size={14} />
                             Lý do từ chối <span className='text-destructive'>*</span>
                         </Label>
-                        <Select value={reason} onValueChange={setReason}>
+                        <Select value={reason} onValueChange={setReason} disabled={submitting}>
                             <SelectTrigger className='w-full'>
                                 <SelectValue placeholder='Chọn lý do từ chối...' />
                             </SelectTrigger>
@@ -91,6 +94,7 @@ export function RejectDialog({ tutors, open, onOpenChange, onConfirm }: RejectDi
                             value={note}
                             onChange={e => setNote(e.target.value)}
                             className='resize-none h-28'
+                            disabled={submitting}
                         />
                         <p className='text-xs text-muted-foreground'>
                             Ghi chú sẽ được gửi qua email đến gia sư để họ có thể cải thiện hồ sơ.

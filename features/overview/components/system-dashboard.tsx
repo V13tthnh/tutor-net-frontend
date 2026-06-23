@@ -187,21 +187,21 @@ export function SystemDashboard() {
     } else if (p === '7days') {
       from.setDate(to.getDate() - 7);
       setDateRange({ from, to });
-      setGranularity('day');
+      setGranularity('week');
     } else if (p === '30days') {
       from.setDate(to.getDate() - 30);
       setDateRange({ from, to });
-      setGranularity('day');
+      setGranularity('month');
     } else if (p === 'month') {
       from.setDate(1);
       from.setHours(0, 0, 0, 0);
       setDateRange({ from, to });
-      setGranularity('week');
+      setGranularity('month');
     } else if (p === 'year') {
       from.setMonth(0, 1);
       from.setHours(0, 0, 0, 0);
       setDateRange({ from, to });
-      setGranularity('month');
+      setGranularity('year');
     }
   };
 
@@ -674,6 +674,7 @@ export function SystemDashboard() {
                       />
                       <ChartTooltip
                         cursor={false}
+                        position={{ y: 10 }}
                         content={
                           <ChartTooltipContent
                             indicator="dashed"

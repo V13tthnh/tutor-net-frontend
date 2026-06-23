@@ -174,7 +174,7 @@ export function ContractTableRow({
       <TableCell className="text-right align-top">
         <div className="flex gap-1.5 justify-end">
           {/* Confirm Payment button */}
-          {!contract.isFeePaid && (
+          {!contract.isFeePaid && contract.status === 'ACTIVE' && (
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button

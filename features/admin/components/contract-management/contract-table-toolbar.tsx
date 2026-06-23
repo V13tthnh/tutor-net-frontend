@@ -28,7 +28,7 @@ import {
 } from '@/components/ui/select';
 import { Icons } from '@/components/icons';
 import { CheckIcon, Cross2Icon } from '@radix-ui/react-icons';
-import { Loader2, Download, PhoneCall } from 'lucide-react';
+import { Loader2, Download } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
@@ -126,8 +126,6 @@ interface ContractTableToolbarProps {
   onSearchChange: (value: string) => void;
   isLoading: boolean;
   debouncedSearch: string;
-  isKetKyActive: boolean;
-  onToggleKetKy: () => void;
   isExporting: boolean;
   onExport: () => void;
   statusSelected: Set<string>;
@@ -144,8 +142,6 @@ export function ContractTableToolbar({
   onSearchChange,
   isLoading,
   debouncedSearch,
-  isKetKyActive,
-  onToggleKetKy,
   isExporting,
   onExport,
   statusSelected,
@@ -171,24 +167,6 @@ export function ContractTableToolbar({
           )}
         </div>
         <div className="flex gap-2 shrink-0">
-          {/* Thúc đẩy tiến độ shortcut */}
-          <Button
-            variant={isKetKyActive ? 'default' : 'outline'}
-            onClick={onToggleKetKy}
-            className={cn(
-              'gap-2 text-xs font-semibold cursor-pointer h-9',
-              isKetKyActive && 'bg-amber-600 hover:bg-amber-700 text-white border-0'
-            )}
-          >
-            <PhoneCall className="h-4 w-4" />
-            Thúc đẩy kẹt ký{' '}
-            {isKetKyActive && (
-              <span className="ml-1 text-[10px] bg-white text-amber-700 px-1.5 py-0.2 rounded-full">
-                ON
-              </span>
-            )}
-          </Button>
-
           {/* Export Button */}
           <Button
             variant="outline"

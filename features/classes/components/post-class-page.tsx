@@ -337,8 +337,11 @@ const SubjectsSection = memo(function SubjectsSection({
             <div className='rounded-xl border border-primary/20 bg-primary/5 p-4 space-y-3'>
               <p className='text-sm font-semibold text-foreground flex items-center gap-2'>
                 <IconCurrencyDong size={16} className='text-primary' />
-                Học phí đề xuất theo môn <span className='text-muted-foreground text-xs font-normal'>(tùy chọn, VNĐ/tháng)</span>
+                Học phí đề xuất theo môn <span className='text-destructive'>*</span> <span className='text-muted-foreground text-xs font-normal'>(VNĐ/tháng)</span>
               </p>
+              {errors.proposedPrice && (
+                <p className='text-xs text-destructive mb-1' data-error='true'>{errors.proposedPrice}</p>
+              )}
               <div className='grid gap-3 sm:grid-cols-2'>
                 {selectedSubjects.map(sub => (
                   <SubjectPriceRow
@@ -751,14 +754,31 @@ export default function PostClassPage() {
 
   // FIX: validate đọc trực tiếp từ form ref thay vì depend vào form object
   // → không cần useCallback với dependency, gọi validate() lúc submit là đủ
-  const validate = (currentForm: FormData, currentSubjectsCount: number) => {
+  const validate = (currentForm: FormData, currentSelectedSubjects: SubjectSelection[]) => {
     const newErrors: Record<string, string> = {};
     if (!currentForm.contactName.trim()) newErrors.contactName = 'Vui lòng nhập họ tên';
     if (!currentForm.contactPhone.trim()) newErrors.contactPhone = 'Vui lòng nhập số điện thoại';
     else if (!/^[0-9+\s\-()]{9,15}$/.test(currentForm.contactPhone.trim())) newErrors.contactPhone = 'Số điện thoại không hợp lệ';
     if (!currentForm.contactEmail.trim()) newErrors.contactEmail = 'Vui lòng nhập email';
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(currentForm.contactEmail.trim())) newErrors.contactEmail = 'Email không hợp lệ';
-    if (currentSubjectsCount === 0) newErrors.subjects = 'Vui lòng chọn ít nhất 1 môn học';
+    
+    if (currentSelectedSubjects.length === 0) {
+      newErrors.subjects = 'Vui lòng chọn ít nhất 1 môn học';
+    } else {
+      const hasEmptyPrice = currentSelectedSubjects.some(sub => !sub.proposedPrice.trim());
+      if (hasEmptyPrice) {
+        newErrors.proposedPrice = 'Vui lòng nhập học phí đề xuất cho tất cả các môn đã chọn';
+      } else {
+        const hasInvalidPrice = currentSelectedSubjects.some(sub => {
+          const price = parseFloat(sub.proposedPrice);
+          return isNaN(price) || price <= 0;
+        });
+        if (hasInvalidPrice) {
+          newErrors.proposedPrice = 'Học phí đề xuất phải lớn hơn 0';
+        }
+      }
+    }
+
     if (!currentForm.gradeLevel) newErrors.gradeLevel = 'Vui lòng chọn cấp độ';
     if (!currentForm.teachingMode) newErrors.teachingMode = 'Vui lòng chọn hình thức học';
     return newErrors;
@@ -766,7 +786,7 @@ export default function PostClassPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const newErrors = validate(form, selectedSubjects.length);
+    const newErrors = validate(form, selectedSubjects);
     if (Object.keys(newErrors).length > 0) {
       dispatch({ type: 'SET_ERRORS', errors: newErrors });
       document.querySelector('[data-error="true"]')?.scrollIntoView({ behavior: 'smooth', block: 'center' });

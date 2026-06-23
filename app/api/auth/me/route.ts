@@ -33,20 +33,49 @@ export async function GET(request: Request) {
 
   if (refresh && session.accessToken) {
     try {
-      const res = await queryGetMe(session.accessToken) as any;
-      // Trích xuất từ res.data nếu có wrapper data, nếu không thì lấy trực tiếp từ res
-      const freshUser = res?.data || res;
-      if (freshUser) {
-        // Cập nhật thông tin mới nhất vào session
-        session.user = {
-          ...session.user,
-          fullName: freshUser.fullName || session.user.fullName,
-          avatarUrl: freshUser.avatarUrl !== undefined ? freshUser.avatarUrl : session.user.avatarUrl,
-        };
-        user = session.user;
+      // 1. Gọi backend refresh token để lấy access token mới (được ký với roles/permissions mới trong DB)
+      const { refreshSessionService } = await import('@/features/auth/api/service');
+      const newSession = await refreshSessionService(session);
+      if (newSession && newSession.accessToken) {
+        // 2. Lấy thông tin user tươi mới nhất từ backend bằng token mới
+        const freshUser = await queryGetMe(newSession.accessToken) as any;
+        const freshUserData = freshUser?.data || freshUser;
+        if (freshUserData) {
+          newSession.user = {
+            ...newSession.user,
+            fullName: freshUserData.fullName || newSession.user.fullName,
+            avatarUrl: freshUserData.avatarUrl !== undefined ? freshUserData.avatarUrl : newSession.user.avatarUrl,
+            roles: freshUserData.roles || newSession.user.roles,
+            permissions: freshUserData.permissions || newSession.user.permissions,
+          };
+        }
+        
+        // 3. Ghi đè session mới vào cookies (accessToken mới + User roles mới)
+        if (isAdminRequest) {
+          await setServerSession(newSession);
+        } else {
+          await setClientSession(newSession);
+        }
+        session = newSession;
+        user = newSession.user;
       }
     } catch (e) {
       console.error('Failed to refresh session from backend:', e);
+      // Fallback: nếu gọi refresh token thất bại, thử lấy user info bằng token hiện tại
+      try {
+        const res = await queryGetMe(session.accessToken) as any;
+        const freshUser = res?.data || res;
+        if (freshUser) {
+          session.user = {
+            ...session.user,
+            fullName: freshUser.fullName || session.user.fullName,
+            avatarUrl: freshUser.avatarUrl !== undefined ? freshUser.avatarUrl : session.user.avatarUrl,
+          };
+          user = session.user;
+        }
+      } catch (innerErr) {
+        console.error('Failed fallback queryGetMe:', innerErr);
+      }
     }
   }
 

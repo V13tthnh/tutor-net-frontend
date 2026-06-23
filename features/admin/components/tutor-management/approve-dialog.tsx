@@ -32,7 +32,10 @@ export function ApproveDialog({ tutors, open, onOpenChange, onConfirm }: Approve
     };
 
     return (
-        <Dialog open={open} onOpenChange={onOpenChange}>
+        <Dialog open={open} onOpenChange={(v) => {
+            if (submitting) return;
+            onOpenChange(v);
+        }}>
             <DialogContent className='max-w-md'>
                 <DialogHeader>
                     <div className='flex items-center gap-3 mb-1'>

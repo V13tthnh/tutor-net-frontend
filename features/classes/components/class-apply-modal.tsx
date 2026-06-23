@@ -72,7 +72,10 @@ export function ClassApplyModal({
           </span>
           <button
             type="button"
-            onClick={onClose}
+            onClick={() => {
+              if (submitting) return;
+              onClose();
+            }}
             disabled={submitting}
             aria-label="Đóng"
             className="rounded-full p-1.5 transition-colors hover:bg-primary-foreground/10 text-primary-foreground cursor-pointer disabled:opacity-50"

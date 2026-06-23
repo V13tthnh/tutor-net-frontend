@@ -101,6 +101,7 @@ export const GENDERS = ['Nam', 'Nữ'];
 
 export type Tutor = {
   id: number;
+  userId?: number | null;
   first_name: string;
   last_name: string;
   avatar_url: string;

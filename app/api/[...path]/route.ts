@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession, getClientSession, setServerSession, setClientSession, clearServerSession, clearClientSession } from '@/features/auth/lib/session.server';
+import { getServerSession, getClientSession } from '@/features/auth/lib/session.server';
 import { refreshSessionService } from '@/features/auth/api/service';
-import { AUTH_CONFIG } from '@/features/auth/lib/auth.config';
 import { signUserCookie } from '@/features/auth/lib/auth.utils';
 
 export const dynamic = 'force-dynamic';
@@ -72,11 +71,23 @@ async function handleProxy(
   }
 
   // ─── Determine session and whether this is an admin or client request ─────
+  const referer = request.headers.get('referer');
   const isAdminRoute = request.nextUrl.pathname.startsWith('/api/v1/admin') ||
-    request.nextUrl.pathname.startsWith('/api/v1') && pathStr.startsWith('admin');
+    (request.nextUrl.pathname.startsWith('/api/v1') && pathStr.startsWith('admin')) ||
+    !!(referer && (referer.includes('/admin') || referer.includes('/auth/admin')));
 
   const isAdmin = isAdminRoute;
   let session = isAdmin ? await getServerSession() : await getClientSession();
+
+  // Fallback to the other session if access token is missing in the primary session
+  if (!session?.accessToken) {
+    if (isAdmin) {
+      const fallback = await getClientSession();
+      if (fallback?.accessToken) {
+        session = fallback;
+      }
+    }
+  }
 
   // ─── Build headers helper ─────────────────────────────────────────────────
   function buildHeaders(accessToken?: string): Headers {

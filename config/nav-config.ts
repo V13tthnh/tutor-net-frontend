@@ -169,14 +169,14 @@ export const navGroups: NavGroup[] = [
             isActive: true,
             items: []
           },
-          // {
-          //   title: 'Audit Logs',
-          //   url: '/admin/audit-logs',
-          //   icon: 'logs',
-          //   shortcut: ['a', 'l'],
-          //   isActive: false,
-          //   items: []
-          // }
+          {
+            title: 'Security sandbox',
+            url: '/admin/security-sandbox',
+            icon: 'shield',
+            shortcut: ['s', 'x'],
+            isActive: false,
+            items: []
+          }
         ]
       },
     ]

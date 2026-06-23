@@ -118,6 +118,7 @@ import {
   IconBrandTiktok,
   IconLink,
   IconUserCog,
+  IconShield,
 } from '@tabler/icons-react';
 
 export type Icon = React.ComponentType<IconProps>;
@@ -168,6 +169,7 @@ export const Icons = {
   instagram: IconBrandInstagram,
   tiktok: IconBrandTiktok,
   link: IconLink,
+  shield: IconShield,
 
   // Navigation / Chevrons
   chevronDown: IconChevronDown,
