@@ -44,14 +44,15 @@ export default function AccountLayout({ children }: { children: React.ReactNode 
     }
 
     const TABS = [
-        { id: 'profile', label: 'Hồ sơ', icon: <Icons.user size={16} />, href: `/account` },
-        { id: 'notifications', label: 'Thông báo', icon: <Icons.notification size={16} />, href: `/account/notifications` },
+        { id: 'profile', label: 'Thông tin tài khoản', icon: <Icons.user size={16} />, href: `/account` },
+
         ...(user.roles.includes('tutor') ? [
             { id: 'invitations', label: 'Lời mời dạy', icon: <Icons.email size={16} />, href: `/account/invitations` }
         ] : []),
         { id: 'new-cv', label: user.roles.includes('tutor') ? 'Hồ sơ gia sư' : 'Đăng ký làm gia sư', icon: <Icons.cv size={16} />, href: `/account/new-cv` },
-        { id: 'my-classes', label: 'Lớp của tôi', icon: <Icons.class size={16} />, href: `/account/my-classes` },
-        { id: 'contracts', label: 'Hợp đồng của tôi', icon: <Icons.forms size={16} />, href: `/account/contracts` },
+        { id: 'my-classes', label: 'Lớp học', icon: <Icons.class size={16} />, href: `/account/my-classes` },
+        { id: 'contracts', label: 'Hợp đồng', icon: <Icons.forms size={16} />, href: `/account/contracts` },
+        { id: 'notifications', label: 'Thông báo', icon: <Icons.notification size={16} />, href: `/account/notifications` },
         { id: 'security', label: 'Bảo mật', icon: <Icons.lock size={16} />, href: `/account/security` },
     ];
 
