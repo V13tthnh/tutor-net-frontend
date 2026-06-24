@@ -43,3 +43,9 @@ export async function downloadContractPdf(contractId: number): Promise<Blob> {
   });
 }
 
+export async function completeContract(contractId: number): Promise<{ success: boolean; data: string }> {
+  return apiClient<{ success: boolean; data: string }>(`/contracts/${contractId}/complete`, {
+    method: 'POST',
+  });
+}
+
