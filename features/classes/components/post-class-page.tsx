@@ -78,6 +78,7 @@ interface FormData {
   ward: string;
   addressDetail: string;
   studentNotes: string;
+  priceMode: 'MONTHLY' | 'HOURLY';
 }
 
 // ── useReducer: gộp form + errors vào 1 state → 1 render mỗi keystroke ────────
@@ -97,7 +98,7 @@ const EMPTY_FORM: FormData = {
   contactName: '', contactPhone: '', contactEmail: '',
   gradeLevel: '', teachingMode: '', sessionsPerWeek: 2,
   durationMinutes: 90, province: '', ward: '', addressDetail: '',
-  studentNotes: '',
+  studentNotes: '', priceMode: 'MONTHLY',
 };
 
 function formReducer(state: FormState, action: FormAction): FormState {
@@ -264,12 +265,16 @@ interface SubjectsSectionProps {
   subjectsLoading: boolean;
   selectedSubjects: SubjectSelection[];
   errors: Record<string, string>;
+  priceMode: 'MONTHLY' | 'HOURLY';
+  sessionsPerWeek: number;
+  durationMinutes: number;
+  onPriceModeChange: (mode: 'MONTHLY' | 'HOURLY') => void;
   onToggle: (sub: Pick<Subject, 'id' | 'name'>) => void;
   onPriceChange: (id: number, price: string) => void;
 }
 
 const SubjectsSection = memo(function SubjectsSection({
-  subjects, subjectsLoading, selectedSubjects, errors, onToggle, onPriceChange,
+  subjects, subjectsLoading, selectedSubjects, errors, priceMode, sessionsPerWeek, durationMinutes, onPriceModeChange, onToggle, onPriceChange,
 }: SubjectsSectionProps) {
   const completed = selectedSubjects.length > 0;
   return (
@@ -335,10 +340,35 @@ const SubjectsSection = memo(function SubjectsSection({
 
           {selectedSubjects.length > 0 && (
             <div className='rounded-xl border border-primary/20 bg-primary/5 p-4 space-y-3'>
-              <p className='text-sm font-semibold text-foreground flex items-center gap-2'>
-                <IconCurrencyDong size={16} className='text-primary' />
-                Học phí đề xuất theo môn <span className='text-destructive'>*</span> <span className='text-muted-foreground text-xs font-normal'>(VNĐ/tháng)</span>
-              </p>
+              <div className='flex flex-col sm:flex-row sm:items-center justify-between gap-3'>
+                <p className='text-sm font-semibold text-foreground flex items-center gap-2'>
+                  <IconCurrencyDong size={16} className='text-primary' />
+                  Học phí đề xuất <span className='text-destructive'>*</span>
+                </p>
+                <div className='flex items-center rounded-lg bg-background border p-1 shadow-sm shrink-0 w-fit'>
+                  <button
+                    type='button'
+                    onClick={() => onPriceModeChange('MONTHLY')}
+                    className={cn(
+                      'px-3 py-1.5 text-xs font-bold rounded-md transition-all',
+                      priceMode === 'MONTHLY' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                    )}
+                  >
+                    VNĐ / Tháng
+                  </button>
+                  <button
+                    type='button'
+                    onClick={() => onPriceModeChange('HOURLY')}
+                    className={cn(
+                      'px-3 py-1.5 text-xs font-bold rounded-md transition-all',
+                      priceMode === 'HOURLY' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                    )}
+                  >
+                    VNĐ / Giờ
+                  </button>
+                </div>
+              </div>
+
               {errors.proposedPrice && (
                 <p className='text-xs text-destructive mb-1' data-error='true'>{errors.proposedPrice}</p>
               )}
@@ -347,6 +377,9 @@ const SubjectsSection = memo(function SubjectsSection({
                   <SubjectPriceRow
                     key={sub.id}
                     sub={sub}
+                    priceMode={priceMode}
+                    sessionsPerWeek={sessionsPerWeek}
+                    durationMinutes={durationMinutes}
                     onPriceChange={onPriceChange}
                     onRemove={onToggle}
                   />
@@ -602,34 +635,58 @@ const NotesSection = memo(function NotesSection({ value, onChange }: NotesSectio
 // ── SubjectPriceRow ───────────────────────────────────────────────────────────
 interface SubjectPriceRowProps {
   sub: SubjectSelection;
+  priceMode: 'MONTHLY' | 'HOURLY';
+  sessionsPerWeek: number;
+  durationMinutes: number;
   onPriceChange: (id: number, price: string) => void;
   onRemove: (sub: Pick<Subject, 'id' | 'name'>) => void;
 }
 
-const SubjectPriceRow = memo(function SubjectPriceRow({ sub, onPriceChange, onRemove }: SubjectPriceRowProps) {
+const SubjectPriceRow = memo(function SubjectPriceRow({ sub, priceMode, sessionsPerWeek, durationMinutes, onPriceChange, onRemove }: SubjectPriceRowProps) {
+  const numericPrice = parseFloat(sub.proposedPrice) || 0;
+  
+  // Calculate equivalent price for display
+  const convertedPrice = useMemo(() => {
+    if (!numericPrice) return null;
+    const factor = (durationMinutes / 60) * (sessionsPerWeek * 4);
+    if (priceMode === 'HOURLY') {
+      return Math.round(numericPrice * factor); // To monthly
+    } else {
+      return Math.round(numericPrice / factor); // To hourly
+    }
+  }, [numericPrice, priceMode, durationMinutes, sessionsPerWeek]);
+
   return (
-    <div className='flex items-center gap-2'>
-      <Badge variant='secondary' className='shrink-0 text-xs px-2 py-1 min-w-[80px] justify-center'>
-        {sub.name}
-      </Badge>
-      <div className='relative flex-1'>
-        <Input
-          type='text'
-          placeholder='VD: 500.000'
-          value={formatVND(sub.proposedPrice)}
-          onChange={e => onPriceChange(sub.id, parseVND(e.target.value))}
-          className='h-8 text-sm pr-10'
-        />
-        <span className='absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none'>₫</span>
+    <div className='flex flex-col gap-1.5'>
+      <div className='flex items-center gap-2'>
+        <Badge variant='secondary' className='shrink-0 text-xs px-2 py-1 min-w-[80px] justify-center'>
+          {sub.name}
+        </Badge>
+        <div className='relative flex-1'>
+          <Input
+            type='text'
+            placeholder={priceMode === 'MONTHLY' ? 'VD: 3.000.000' : 'VD: 250.000'}
+            value={formatVND(sub.proposedPrice)}
+            onChange={e => onPriceChange(sub.id, parseVND(e.target.value))}
+            className='h-9 text-sm pr-10'
+          />
+          <span className='absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none'>₫</span>
+        </div>
+        <button
+          type='button'
+          onClick={() => onRemove({ id: sub.id, name: sub.name })}
+          className='text-muted-foreground hover:text-destructive transition-colors'
+          aria-label={`Xóa ${sub.name}`}
+        >
+          <IconX size={14} />
+        </button>
       </div>
-      <button
-        type='button'
-        onClick={() => onRemove({ id: sub.id, name: sub.name })}
-        className='text-muted-foreground hover:text-destructive transition-colors'
-        aria-label={`Xóa ${sub.name}`}
-      >
-        <IconX size={14} />
-      </button>
+      {numericPrice > 0 && (
+        <p className='text-[11px] text-muted-foreground italic text-right pr-6'>
+          {priceMode === 'HOURLY' ? '≈ ' : '≈ '}
+          {formatVND(convertedPrice?.toString() || '0')} đ/{priceMode === 'HOURLY' ? 'tháng' : 'giờ'}
+        </p>
+      )}
     </div>
   );
 });
@@ -802,7 +859,11 @@ export default function PostClassPage() {
         contactEmail: form.contactEmail.trim() || undefined,
         subjectId: sub.id,
         gradeLevel: form.gradeLevel,
-        proposedPrice: sub.proposedPrice ? parseFloat(sub.proposedPrice) : undefined,
+        proposedPrice: sub.proposedPrice ? (
+          form.priceMode === 'HOURLY' 
+            ? parseFloat(sub.proposedPrice) * (form.durationMinutes / 60) * (form.sessionsPerWeek * 4) 
+            : parseFloat(sub.proposedPrice)
+        ) : undefined,
         teachingMode: form.teachingMode,
         sessionsPerWeek: form.sessionsPerWeek,
         durationMinutes: form.durationMinutes,
@@ -883,6 +944,10 @@ export default function PostClassPage() {
         subjectsLoading={subjectsLoading}
         selectedSubjects={selectedSubjects}
         errors={errors}
+        priceMode={form.priceMode}
+        sessionsPerWeek={form.sessionsPerWeek}
+        durationMinutes={form.durationMinutes}
+        onPriceModeChange={(val) => updateForm('priceMode', val)}
         onToggle={toggleSubject}
         onPriceChange={setSubjectPrice}
       />

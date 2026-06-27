@@ -7,6 +7,7 @@ import { useQuery } from '@tanstack/react-query';
 import { parseAsInteger, parseAsString, useQueryStates, parseAsNativeArrayOf } from 'nuqs';
 import * as React from 'react';
 import { DataTableSkeleton } from '@/components/ui/table/data-table-skeleton';
+import { ForbiddenState } from '@/components/ui/table/table-forbidden-state';
 import { usersQueryOptions, userFilterOptionsQueryOptions } from '../../api/queries';
 import { getColumns } from './columns';
 import { ROLE_OPTIONS, STATUS_OPTIONS } from './options';
@@ -58,7 +59,7 @@ export function UsersTable() {
     ...(sortingState.length > 0 && { sort: JSON.stringify(sortingState) })
   };
 
-  const { data, isPending } = useQuery(usersQueryOptions(filters));
+  const { data, isPending, isError } = useQuery(usersQueryOptions(filters));
 
   const pageCount = data ? Math.ceil(data.total_users / params.limit) : 0;
 
@@ -86,6 +87,8 @@ export function UsersTable() {
           withViewOptions={false}
           withPagination={true}
         />
+      ) : isError ? (
+        <ForbiddenState />
       ) : (
         <DataTable table={table} />
       )}

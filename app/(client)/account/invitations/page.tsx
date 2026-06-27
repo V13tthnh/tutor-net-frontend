@@ -955,7 +955,27 @@ export default function InvitationsPage() {
 
                                     <div className='space-y-2'>
                                         <p className='font-bold'>Điều 3: Phí giao lớp, Hạn thanh toán và Chính sách hoàn phí (Giữa Bên A và Bên B)</p>
-                                        <p className='text-neutral-700 dark:text-neutral-300'>3.1 Phí giao lớp (Phí giới thiệu): Bên B có trách nhiệm thanh toán cho Bên A khoản phí môi giới một lần duy nhất trị giá: <span className='font-bold text-neutral-900 dark:text-neutral-50'>{previewData.introductionFee.toLocaleString('vi-VN')} VND</span>.</p>
+                                        <div className='text-neutral-700 dark:text-neutral-300'>
+                                          3.1 Phí giao lớp (Phí giới thiệu): Bên B có trách nhiệm thanh toán cho Bên A khoản phí môi giới một lần duy nhất.
+                                          {previewData.estimatedMonthlyTuition && previewData.feePercentage ? (
+                                            <div className="mt-2 ml-4 p-3 bg-neutral-50 dark:bg-neutral-900 rounded-md border border-neutral-200 dark:border-neutral-800 text-sm">
+                                              <div className="flex justify-between py-1">
+                                                <span>Học phí dự kiến tháng đầu:</span>
+                                                <span className="font-semibold">{previewData.estimatedMonthlyTuition.toLocaleString('vi-VN')} VND</span>
+                                              </div>
+                                              <div className="flex justify-between py-1">
+                                                <span>Tỉ lệ phí áp dụng:</span>
+                                                <span className="font-semibold">{previewData.feePercentage}%</span>
+                                              </div>
+                                              <div className="flex justify-between py-1 border-t border-neutral-200 dark:border-neutral-800 mt-1 pt-1 font-bold text-primary">
+                                                <span>Tổng phí môi giới phải nộp:</span>
+                                                <span>{previewData.introductionFee.toLocaleString('vi-VN')} VND</span>
+                                              </div>
+                                            </div>
+                                          ) : (
+                                            <span> Trị giá: <span className='font-bold text-neutral-900 dark:text-neutral-50'>{previewData.introductionFee.toLocaleString('vi-VN')} VND</span>.</span>
+                                          )}
+                                        </div>
                                         <p className='text-neutral-700 dark:text-neutral-300'>3.2 Hạn thanh toán: Chậm nhất là <span className='font-bold'>35 ngày</span> kể từ Ngày Giao Lớp hệ thống ghi nhận.</p>
                                         <p className='text-neutral-700 dark:text-neutral-300'>3.3 Cơ chế phân bậc phí dựa trên vòng đời thực tế của Lớp học (Bảo hộ rủi ro lớp hỏng):</p>
                                         <div className='pl-4 space-y-1 text-neutral-700 dark:text-neutral-300'>

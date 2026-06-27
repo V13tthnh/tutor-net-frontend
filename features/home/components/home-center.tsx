@@ -10,7 +10,7 @@ export default function HomeCenter() {
         <Tooltip>
             <TooltipTrigger asChild>
                 <Button variant='ghost' size='icon' className='relative h-8 w-8' asChild>
-                    <Link href="/">
+                    <Link href="/" target="_blank" rel="noopener noreferrer">
                         <Icons.home className='h-4 w-4' />
                     </Link>
                 </Button>

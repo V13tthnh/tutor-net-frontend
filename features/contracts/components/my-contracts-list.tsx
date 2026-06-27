@@ -129,7 +129,6 @@ function StatusBadge({ status }: { status: ContractStatus }) {
 export default function MyContractsList() {
   const queryClient = useQueryClient();
   const { user } = useAuthSession();
-  const isTutor = user?.roles?.includes('tutor') || false;
 
   const router = useRouter();
   const pathname = usePathname();
@@ -477,7 +476,7 @@ export default function MyContractsList() {
                 </thead>
                 <tbody>
                   {paginatedContracts.map((contract, idx) => {
-                    const isSignable = isTutor && (contract.status === 'DRAFT' || contract.status === 'PENDING_SIGNATURE');
+                    const isSignable = contract.isUserTutor && (contract.status === 'DRAFT' || contract.status === 'PENDING_SIGNATURE');
                     const hasPdf = !!contract.contractFileUrl;
 
                     return (
@@ -574,7 +573,7 @@ export default function MyContractsList() {
                                     </Tooltip>
                                   </>
                                 )}
-                                {contract.status === 'ACTIVE' && (
+                                {!contract.isUserTutor && contract.status === 'ACTIVE' && (
                                   <Tooltip>
                                     <TooltipTrigger asChild>
                                       <Button
@@ -613,7 +612,7 @@ export default function MyContractsList() {
             {/* Mobile Card List View */}
             <div className="md:hidden space-y-3">
               {paginatedContracts.map((contract, idx) => {
-                const isSignable = isTutor && (contract.status === 'DRAFT' || contract.status === 'PENDING_SIGNATURE');
+                const isSignable = contract.isUserTutor && (contract.status === 'DRAFT' || contract.status === 'PENDING_SIGNATURE');
                 const hasPdf = !!contract.contractFileUrl;
 
                 return (
@@ -696,7 +695,7 @@ export default function MyContractsList() {
                               <span className="text-xs text-muted-foreground italic w-full text-center">Không có thao tác</span>
                             )
                           )}
-                          {contract.status === 'ACTIVE' && (
+                          {!contract.isUserTutor && contract.status === 'ACTIVE' && (
                             <Button
                               size="sm"
                               className="w-full h-9 text-xs font-bold bg-violet-600 hover:bg-violet-700 text-white flex items-center justify-center gap-1.5 cursor-pointer shadow-sm border-0"
@@ -892,19 +891,19 @@ export default function MyContractsList() {
                   <div className="space-y-1.5">
                     <p className="font-bold">2. KHÁCH HÀNG / GIA SƯ (BÊN B):</p>
                     <div className="pl-4 text-neutral-700 dark:text-neutral-300">
-                      <div>• Họ và tên gia sư: <span className="font-bold uppercase">{isTutor ? user?.fullName?.toUpperCase() : signingContract.partnerName?.toUpperCase()}</span></div>
-                      <div>• Năm sinh: {isTutor ? (user as any)?.birthYear || 'N/A' : 'N/A'}</div>
-                      <div>• Số điện thoại liên hệ: {isTutor ? (user as any)?.phone || 'N/A' : 'N/A'}</div>
-                      <div>• Email hệ thống: {isTutor ? user?.email : 'N/A'}</div>
+                      <div>• Họ và tên gia sư: <span className="font-bold uppercase">{signingContract.isUserTutor ? user?.fullName?.toUpperCase() : signingContract.partnerName?.toUpperCase()}</span></div>
+                      <div>• Năm sinh: {signingContract.isUserTutor ? (user as any)?.birthYear || 'N/A' : 'N/A'}</div>
+                      <div>• Số điện thoại liên hệ: {signingContract.isUserTutor ? (user as any)?.phone || 'N/A' : 'N/A'}</div>
+                      <div>• Email hệ thống: {signingContract.isUserTutor ? user?.email : 'N/A'}</div>
                     </div>
                   </div>
 
                   <div className="space-y-1.5">
                     <p className="font-bold">3. PHỤ HUYNH / HỌC SINH (BÊN C):</p>
                     <div className="pl-4 text-neutral-700 dark:text-neutral-300">
-                      <div>• Họ và tên người đại diện: <span className="font-bold uppercase">{isTutor ? `${signingContract.partnerName?.toUpperCase()} (PHỤ HUYNH)` : `${user?.fullName?.toUpperCase()} (PHỤ HUYNH)`}</span></div>
-                      <div>• Số điện thoại liên hệ: <span className="italic text-neutral-500">{isTutor ? `${signingContract.contactPhone || 'N/A'} (Sẽ được mở khóa sau khi ký nhận)` : (user as any)?.phone || 'N/A'}</span></div>
-                      <div>• Email nhận thông báo: <span className="italic text-neutral-500">{isTutor ? 'Không có (Sẽ được mở khóa sau khi ký nhận)' : user?.email || 'N/A'}</span></div>
+                      <div>• Họ và tên người đại diện: <span className="font-bold uppercase">{signingContract.isUserTutor ? `${signingContract.partnerName?.toUpperCase()} (PHỤ HUYNH)` : `${user?.fullName?.toUpperCase()} (PHỤ HUYNH)`}</span></div>
+                      <div>• Số điện thoại liên hệ: <span className="italic text-neutral-500">{signingContract.isUserTutor ? `${signingContract.contactPhone || 'N/A'} (Sẽ được mở khóa sau khi ký nhận)` : (user as any)?.phone || 'N/A'}</span></div>
+                      <div>• Email nhận thông báo: <span className="italic text-neutral-500">{signingContract.isUserTutor ? 'Không có (Sẽ được mở khóa sau khi ký nhận)' : user?.email || 'N/A'}</span></div>
                       <div>• Địa chỉ giảng dạy: <span className="italic text-neutral-500">Theo thỏa thuận</span></div>
                     </div>
                   </div>
@@ -955,7 +954,27 @@ export default function MyContractsList() {
 
                   <div className="space-y-2">
                     <p className="font-bold">Điều 3: Phí giao lớp, Hạn thanh toán và Chính sách hoàn phí (Giữa Bên A và Bên B)</p>
-                    <p className="text-neutral-700 dark:text-neutral-300">3.1 Phí giao lớp (Phí giới thiệu): Bên B có trách nhiệm thanh toán cho Bên A khoản phí môi giới một lần duy nhất trị giá: <span className="font-bold text-neutral-900 dark:text-neutral-50">{signingContract.introductionFee.toLocaleString('vi-VN')} VND</span>.</p>
+                    <div className="text-neutral-700 dark:text-neutral-300">
+                      3.1 Phí giao lớp (Phí giới thiệu): Bên B có trách nhiệm thanh toán cho Bên A khoản phí môi giới một lần duy nhất.
+                      {signingContract.estimatedMonthlyTuition && signingContract.feePercentage ? (
+                        <div className="mt-2 ml-4 p-3 bg-neutral-50 dark:bg-neutral-900 rounded-md border border-neutral-200 dark:border-neutral-800 text-sm">
+                          <div className="flex justify-between py-1">
+                            <span>Học phí dự kiến tháng đầu:</span>
+                            <span className="font-semibold">{signingContract.estimatedMonthlyTuition.toLocaleString('vi-VN')} VND</span>
+                          </div>
+                          <div className="flex justify-between py-1">
+                            <span>Tỉ lệ phí áp dụng:</span>
+                            <span className="font-semibold">{signingContract.feePercentage}%</span>
+                          </div>
+                          <div className="flex justify-between py-1 border-t border-neutral-200 dark:border-neutral-800 mt-1 pt-1 font-bold text-primary">
+                            <span>Tổng phí môi giới phải nộp:</span>
+                            <span>{signingContract.introductionFee.toLocaleString('vi-VN')} VND</span>
+                          </div>
+                        </div>
+                      ) : (
+                        <span> Trị giá: <span className="font-bold text-neutral-900 dark:text-neutral-50">{signingContract.introductionFee.toLocaleString('vi-VN')} VND</span>.</span>
+                      )}
+                    </div>
                     <p className="text-neutral-700 dark:text-neutral-300">3.2 Hạn thanh toán: Chậm nhất là <span className="font-bold">35 ngày</span> kể từ Ngày Giao Lớp hệ thống ghi nhận.</p>
                     <p className="text-neutral-700 dark:text-neutral-300">3.3 Cơ chế phân bậc phí dựa trên vòng đời thực tế của Lớp học (Bảo hộ rủi ro lớp hỏng):</p>
                     <div className="pl-4 space-y-1 text-neutral-700 dark:text-neutral-300">
@@ -1029,12 +1048,12 @@ export default function MyContractsList() {
                   <div>
                     <div className="font-bold">ĐẠI DIỆN BÊN B</div>
                     <div className="text-neutral-500 text-[10px] italic mt-1">(Xác thực qua tài khoản)</div>
-                    <div className="font-bold mt-12 text-neutral-800 dark:text-neutral-300 uppercase">{isTutor ? user?.fullName : signingContract.partnerName}</div>
+                    <div className="font-bold mt-12 text-neutral-800 dark:text-neutral-300 uppercase">{signingContract.isUserTutor ? user?.fullName : signingContract.partnerName}</div>
                   </div>
                   <div>
                     <div className="font-bold">ĐẠI DIỆN BÊN C</div>
                     <div className="text-neutral-500 text-[10px] italic mt-1">(Xác thực qua yêu cầu)</div>
-                    <div className="font-bold mt-12 text-neutral-800 dark:text-neutral-300 uppercase">{isTutor ? signingContract.partnerName : user?.fullName}</div>
+                    <div className="font-bold mt-12 text-neutral-800 dark:text-neutral-300 uppercase">{signingContract.isUserTutor ? signingContract.partnerName : user?.fullName}</div>
                   </div>
                 </div>
 

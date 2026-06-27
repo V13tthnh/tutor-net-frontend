@@ -58,7 +58,8 @@ const PROFICIENCY_LEVELS = [
 const EDU_LEVEL_OPTIONS = [
   { value: 'HIGH_SCHOOL', label: 'Tốt nghiệp THPT' },
   { value: 'ASSOCIATE', label: 'Cao đẳng' },
-  { value: 'BACHELOR', label: 'Đại học' },
+  { value: 'BACHELOR', label: 'Cử nhân' },
+  { value: 'UNIVERSITY', label: 'Đại học' },
   { value: 'MASTER', label: 'Thạc sĩ' },
   { value: 'PHD', label: 'Tiến sĩ' },
   { value: 'OTHER', label: 'Chứng chỉ nghề / Tự học' },

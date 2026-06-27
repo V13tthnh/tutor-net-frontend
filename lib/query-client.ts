@@ -1,10 +1,16 @@
 import { QueryClient, defaultShouldDehydrateQuery, isServer } from '@tanstack/react-query';
+import { ApiPermissionError } from '@/lib/api-client';
 
 function makeQueryClient() {
   return new QueryClient({
     defaultOptions: {
       queries: {
-        staleTime: 60 * 1000
+        staleTime: 60 * 1000,
+        // Không retry khi lỗi 401/403 — chỉ retry tối đa 1 lần với lỗi mạng/server khác
+        retry: (failureCount, error) => {
+          if (error instanceof ApiPermissionError) return false;
+          return failureCount < 1;
+        }
       },
       dehydrate: {
         shouldDehydrateQuery: (query) =>

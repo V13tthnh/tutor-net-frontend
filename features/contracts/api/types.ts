@@ -10,12 +10,15 @@ export interface ContractResponse {
   contactName: string;
   contactPhone: string;
   introductionFee: number;
+  estimatedMonthlyTuition?: number;
+  feePercentage?: number;
   effectiveDate: string;
   feePaymentDeadline: string;
   freeTrialCount: number;
   status: ContractStatus;
   contractFileUrl?: string;
   createdAt: string;
+  isUserTutor?: boolean;
 }
 
 export interface ContractFilters {

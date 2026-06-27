@@ -23,6 +23,7 @@ import type { AdminContractResponse, AdminContractFilters, AdminContractStatus }
 import { ContractTableToolbar } from './contract-table-toolbar';
 import { ContractTableRow } from './contract-table-row';
 import { ContractTablePagination } from './contract-table-pagination';
+import { TableForbiddenState } from '@/components/ui/table/table-forbidden-state';
 
 export function ContractManagementTable() {
   const router = useRouter();
@@ -153,7 +154,7 @@ export function ContractManagementTable() {
     [page, pageSize, debouncedSearch, statusSelected, isFeePaid, sortBy, sortDir]
   );
 
-  const { data: response, isLoading } = useQuery(adminContractsQueryOptions(filters));
+  const { data: response, isLoading, isError } = useQuery(adminContractsQueryOptions(filters));
   const { content = [], totalPages = 0, totalElements = 0 } = response?.data || {};
 
   // Confirm Payment Mutation
@@ -275,6 +276,8 @@ export function ContractManagementTable() {
                     </div>
                   </TableCell>
                 </TableRow>
+              ) : isError ? (
+                <TableForbiddenState colSpan={8} />
               ) : content.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={8} className="text-center py-16 text-muted-foreground font-medium">
