@@ -38,6 +38,7 @@ import { TutorCvModal } from '@/features/tutors/components/tutor-cv-modal';
 import { type TutorApplicant, type TutorStatus } from './tutor-data';
 import { ApproveDialog } from './approve-dialog';
 import { RejectDialog } from './reject-dialog';
+import { TableForbiddenState } from '@/components/ui/table/table-forbidden-state';
 
 const SUBJECT_NAME_TO_ID: Record<string, number> = {
     'Toán': 1, 'Toán học': 1, 'Vật Lý': 4, 'Vật lý': 4, 'Hóa Học': 5, 'Hoá học': 5,
@@ -51,7 +52,8 @@ const SUBJECT_NAME_TO_ID: Record<string, number> = {
 const EDU_LEVEL_MAP: Record<string, string> = {
     'HIGH_SCHOOL': 'Tốt nghiệp THPT',
     'ASSOCIATE': 'Cao đẳng',
-    'BACHELOR': 'Đại học',
+    'BACHELOR': 'Cử nhân',
+    'UNIVERSITY': 'Đại học',
     'MASTER': 'Thạc sĩ',
     'PHD': 'Tiến sĩ',
     'OTHER': 'Khác',
@@ -401,7 +403,7 @@ export function TutorManagementTable() {
         sortDir: 'desc'
     }), [page, pageSize, debouncedSearch, statusSelected, subjectIds]);
 
-    const { data: queryData, isPending, refetch } = useQuery(adminTutorsQueryOptions(filters));
+    const { data: queryData, isPending, isError, refetch } = useQuery(adminTutorsQueryOptions(filters));
 
     /* ─── Derived ─── */
     const tutorsList = useMemo(() => {
@@ -657,6 +659,8 @@ export function TutorManagementTable() {
                                             <p className='text-sm'>Đang tải dữ liệu...</p>
                                         </td>
                                     </tr>
+                                ) : isError ? (
+                                    <TableForbiddenState colSpan={7} />
                                 ) : tutorsList.length === 0 ? (
                                     <tr>
                                         <td colSpan={7} className='py-16 text-center text-muted-foreground'>

@@ -129,9 +129,9 @@ export async function forgotPasswordAction(
   // ── Rate Limiting ─────────────────────────────────────────────────────────
   const headersStore = await headers();
   const ip = headersStore.get("x-forwarded-for")?.split(",")[0] || "127.0.0.1";
-  if (!checkRateLimit(ip, 5, 60000)) {
+  if (!checkRateLimit(ip, 5, 900000)) {
     return {
-      error: "Quá nhiều yêu cầu gửi link khôi phục mật khẩu. Vui lòng thử lại sau 1 phút.",
+      error: "Quá nhiều yêu cầu gửi link khôi phục mật khẩu. Vui lòng thử lại sau 15 phút.",
       email
     };
   }
@@ -169,9 +169,9 @@ export async function resetPasswordAction(
   // ── Rate Limiting ─────────────────────────────────────────────────────────
   const headersStore = await headers();
   const ip = headersStore.get("x-forwarded-for")?.split(",")[0] || "127.0.0.1";
-  if (!checkRateLimit(ip, 5, 60000)) {
+  if (!checkRateLimit(ip, 5, 900000)) {
     return {
-      error: "Quá nhiều yêu cầu đặt lại mật khẩu. Vui lòng thử lại sau 1 phút."
+      error: "Quá nhiều yêu cầu đặt lại mật khẩu. Vui lòng thử lại sau 15 phút."
     };
   }
 

@@ -1,5 +1,16 @@
 import { AUTH_CONFIG } from '@/features/auth/lib/auth.config';
 
+/**
+ * Lỗi đặc biệt cho 401/403: dùng instanceof để nhận diện trong retry logic,
+ * tránh retry vô ích khi user không có quyền.
+ */
+export class ApiPermissionError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'ApiPermissionError';
+  }
+}
+
 function getApiUrl(endpoint: string): string {
   if (typeof window !== 'undefined') {
     // Client-side: route qua proxy handler app/api/[...path]/route.ts để inject token
@@ -21,6 +32,15 @@ function redirectToLogin() {
   const loginPath = AUTH_CONFIG.ROUTES.ADMIN.LOGIN;
   const next = encodeURIComponent(window.location.pathname + window.location.search);
   window.location.href = `${loginPath}?next=${next}&reason=expired`;
+}
+
+/**
+ * Redirect to the generic 403 forbidden page on the client side.
+ * Shows a vague error message instead of exposing permission details.
+ */
+function redirectToForbidden() {
+  if (typeof window === 'undefined') return;
+  window.location.href = '/admin/forbidden';
 }
 
 export interface ApiClientOptions extends RequestInit {
@@ -91,11 +111,21 @@ export async function apiClient<T>(endpoint: string, options?: ApiClientOptions)
           // Return a never-resolving promise so callers don't see a partial error state
           return new Promise<T>(() => { });
         }
-        throw new Error(body?.message || 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
+        throw new ApiPermissionError(body?.message || 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
       }
 
-      // Regular 401/403 (e.g. Access Denied from method security) → throw to be caught by form/mutations
-      throw new Error(body?.message || 'Bạn không có quyền thực hiện thao tác này');
+      // 403 Access Denied → redirect to the generic forbidden page (client-side only)
+      if (res.status === 403) {
+        if (typeof window !== 'undefined') {
+          redirectToForbidden();
+          // Return a never-resolving promise so callers don't see a partial error state
+          return new Promise<T>(() => { });
+        }
+        throw new ApiPermissionError('Đã xảy ra lỗi. Vui lòng thử lại sau ít phút.');
+      }
+
+      // Regular 401 (not expired) → throw to be caught by form/mutations
+      throw new ApiPermissionError(body?.message || 'Bạn không có quyền thực hiện thao tác này');
     }
 
     if (!res.ok) {

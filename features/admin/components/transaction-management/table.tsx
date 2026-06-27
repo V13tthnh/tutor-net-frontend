@@ -50,6 +50,7 @@ import { toast } from 'sonner';
 import { adminTransactionsQueryOptions } from '../../api/queries';
 import { TransactionDetailDialog } from './detail-dialog';
 import type { TransactionResponse, TransactionFilters, TransactionStatus, PaymentMethod } from '../../api/types';
+import { TableForbiddenState } from '@/components/ui/table/table-forbidden-state';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { vi } from 'date-fns/locale';
@@ -293,7 +294,7 @@ export function TransactionManagementTable() {
     [page, pageSize, debouncedSearch, statusSelected, methodSelected, fromDateStr, toDateStr]
   );
 
-  const { data: response, isLoading, refetch } = useQuery(adminTransactionsQueryOptions(filters));
+  const { data: response, isLoading, isError, refetch } = useQuery(adminTransactionsQueryOptions(filters));
   const { content = [], totalPages = 0, totalElements = 0 } = response?.data || {};
 
   // CSV Exporter client-side
@@ -547,6 +548,8 @@ export function TransactionManagementTable() {
                     </div>
                   </TableCell>
                 </TableRow>
+              ) : isError ? (
+                <TableForbiddenState colSpan={8} />
               ) : content.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={8} className="text-center py-16 text-muted-foreground font-medium">

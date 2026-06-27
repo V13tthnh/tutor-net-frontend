@@ -50,6 +50,7 @@ import { adminTutorInvitationsQueryOptions } from '../../api/queries';
 import { TutorInvitationDetailModal } from './detail-modal';
 import { CancelInvitationDialog } from './cancel-dialog';
 import type { AdminTutorInvitationTableResponse, TutorInvitationFilters, InvitationStatus } from '../../api/types';
+import { TableForbiddenState } from '@/components/ui/table/table-forbidden-state';
 
 import { Calendar } from '@/components/ui/calendar';
 import { format } from 'date-fns';
@@ -370,7 +371,7 @@ export function TutorInvitationManagementTable() {
     [page, pageSize, debouncedSearch, statusSelected, startDate, endDate, sortBy, sortDir]
   );
 
-  const { data: response, isLoading } = useQuery(adminTutorInvitationsQueryOptions(filters));
+  const { data: response, isLoading, isError } = useQuery(adminTutorInvitationsQueryOptions(filters));
 
   const { content = [], totalPages = 0, totalElements = 0 } = response?.data || {};
 
@@ -472,6 +473,8 @@ export function TutorInvitationManagementTable() {
                     <Loader2 className="h-6 w-6 animate-spin mx-auto text-muted-foreground" />
                   </TableCell>
                 </TableRow>
+              ) : isError ? (
+                <TableForbiddenState colSpan={8} />
               ) : content.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={8} className="text-center py-12 text-muted-foreground">

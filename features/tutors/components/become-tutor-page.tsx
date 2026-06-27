@@ -889,7 +889,7 @@ export default function BecomeTutorPage() {
 
         <div className='flex items-center gap-2.5 ml-auto'>
           {/* Nút lưu nháp chỉ hiện ở trạng thái DRAFT hoặc REJECTED */}
-          {!isFlexibleReadOnly && profileStatus !== 'APPROVED' && (
+          {/* {!isFlexibleReadOnly && profileStatus !== 'APPROVED' && (
             <Button
               type='button'
               variant='secondary'
@@ -900,7 +900,7 @@ export default function BecomeTutorPage() {
               {loading ? <IconLoader2 size={14} className='animate-spin mr-1' /> : null}
               Lưu nháp
             </Button>
-          )}
+          )} */}
 
           {step < 4 && (
             <Button className='gap-1 px-5 h-10 text-xs font-semibold shadow-sm'

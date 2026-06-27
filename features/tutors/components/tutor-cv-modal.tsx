@@ -26,7 +26,8 @@ const SESSIONS = ['Sáng', 'Chiều', 'Tối'];
 const EDU_LEVEL_MAP: Record<string, string> = {
   'HIGH_SCHOOL': 'Tốt nghiệp THPT',
   'ASSOCIATE': 'Cao đẳng',
-  'BACHELOR': 'Đại học',
+  'BACHELOR': 'Cử nhân',
+  'UNIVERSITY': 'Đại học',
   'MASTER': 'Thạc sĩ',
   'PHD': 'Tiến sĩ',
   'OTHER': 'Khác',

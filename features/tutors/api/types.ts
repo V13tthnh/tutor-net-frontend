@@ -63,6 +63,8 @@ export interface ContractPreviewResponse {
   tuitionRate: number;
   scheduleDetail: string;
   introductionFee: number;
+  estimatedMonthlyTuition?: number;
+  feePercentage?: number;
 }
 
 export interface RejectInvitationRequest {

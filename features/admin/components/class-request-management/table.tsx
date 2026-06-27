@@ -48,6 +48,7 @@ import { ClassRequestDetailModal } from './detail-modal';
 import { ReviewDialog } from './review-dialog';
 import { BulkReviewDialog } from './bulk-review-dialog';
 import type { ClassRequestResponse, ClassRequestFilters } from '../../api/types';
+import { TableForbiddenState } from '@/components/ui/table/table-forbidden-state';
 
 const STATUS_OPTIONS = [
   { value: 'PENDING', label: 'Chờ duyệt' },
@@ -313,7 +314,7 @@ export function ClassRequestManagementTable() {
     [page, pageSize, debouncedSearch, statusSelected, subjectSelected, teachingModeSelected, sortBy, sortDir]
   );
 
-  const { data: response, isLoading } = useQuery(adminClassRequestsQueryOptions(filters));
+  const { data: response, isLoading, isError } = useQuery(adminClassRequestsQueryOptions(filters));
 
   const { content = [], totalPages = 0, totalElements = 0 } = response?.data || {};
 
@@ -535,6 +536,8 @@ export function ClassRequestManagementTable() {
                     <Loader2 className="h-6 w-6 animate-spin mx-auto text-muted-foreground" />
                   </TableCell>
                 </TableRow>
+              ) : isError ? (
+                <TableForbiddenState colSpan={10} />
               ) : content.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
