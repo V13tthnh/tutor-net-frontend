@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useActionState, useEffect, useRef, useTransition } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -10,6 +10,12 @@ import { cn } from '@/lib/utils';
 import { Icons } from '@/components/icons';
 import { apiClient } from '@/lib/api-client';
 import { Spinner } from '@/components/ui/spinner';
+import { getClientSecurityFlags } from '@/features/security-sandbox/components/interceptor';
+import { registerAction } from '@/features/auth/actions/auth.actions';
+import Script from 'next/script';
+
+const v3SiteKey = process.env.NEXT_PUBLIC_RECAPTCHA_V3_SITE_KEY || '6Ldt4Q4TAAAAAO1v4a_4v4x8e-4N_v4t_4e4t_4e';
+const v2SiteKey = process.env.NEXT_PUBLIC_RECAPTCHA_V2_SITE_KEY || '6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI';
 
 
 export default function PublicSignUpPage() {
@@ -27,6 +33,104 @@ export default function PublicSignUpPage() {
     confirm: '',
   });
 
+  const [state, formAction] = useActionState(registerAction, {});
+  const [isPending, startTransition] = useTransition();
+
+  // reCAPTCHA states
+  const [v2Token, setV2Token] = useState('');
+  const [showV2, setShowV2] = useState(false);
+  const [useMockCheckbox, setUseMockCheckbox] = useState(false);
+  const recaptchaReadyRef = useRef(false);
+
+  useEffect(() => {
+    if (state.success) {
+      setSuccessMessage(
+        state.message ||
+        'Đăng ký thành công! Vui lòng kiểm tra hộp thư email của bạn để hoàn tất xác thực.'
+      );
+      setStep(2);
+    }
+    if (state.error) {
+      setError(state.error);
+    }
+    if (state.captchaFallback) {
+      setShowV2(true);
+    }
+  }, [state]);
+
+  useEffect(() => {
+    if (state.email || state.fullName) {
+      setForm((prev) => ({
+        ...prev,
+        email: state.email || prev.email,
+        fullName: state.fullName || prev.fullName,
+      }));
+    }
+  }, [state.email, state.fullName]);
+
+  const handleRecaptchaLoad = () => {
+    recaptchaReadyRef.current = true;
+  };
+
+  async function getFreshV3Token(): Promise<string> {
+    return new Promise((resolve) => {
+      const grecaptcha = (window as any).grecaptcha;
+      if (!grecaptcha || !recaptchaReadyRef.current) {
+        resolve('mock-v3-token');
+        return;
+      }
+      grecaptcha.ready(() => {
+        grecaptcha
+          .execute(v3SiteKey, { action: 'register' })
+          .then((token: string) => resolve(token))
+          .catch(() => resolve('mock-v3-token'));
+      });
+    });
+  }
+
+  useEffect(() => {
+    if (!showV2 || typeof window === 'undefined') return;
+
+    // Load Google reCAPTCHA v2 chính thức
+    (window as any).grecaptcha = undefined;
+    recaptchaReadyRef.current = false;
+
+    const oldScript = document.getElementById('recaptcha-v3-script-tag');
+    if (oldScript) oldScript.remove();
+
+    const badges = document.getElementsByClassName('grecaptcha-badge');
+    while (badges.length > 0) badges[0].remove();
+
+    const script = document.createElement('script');
+    script.id = 'recaptcha-v2-script-tag';
+    script.src = `https://www.google.com/recaptcha/api.js?render=explicit`;
+    script.async = true;
+    script.defer = true;
+    script.onload = () => {
+      const grecaptcha = (window as any).grecaptcha;
+      if (!grecaptcha) return;
+      grecaptcha.ready(() => {
+        const container = document.getElementById('recaptcha-v2-container');
+        if (container) container.innerHTML = '';
+        try {
+          grecaptcha.render('recaptcha-v2-container', {
+            sitekey: v2SiteKey,
+            callback: (token: string) => setV2Token(token),
+            'expired-callback': () => setV2Token(''),
+            'error-callback': () => {
+              setUseMockCheckbox(true);
+              setV2Token('');
+            },
+          });
+        } catch {
+          setUseMockCheckbox(true);
+        }
+      });
+    };
+    script.onerror = () => setUseMockCheckbox(true);
+    document.body.appendChild(script);
+  }, [showV2]);
+
   const passwordStrength = (): { level: number; label: string; color: string } => {
     const p = form.password;
     if (p.length === 0) return { level: 0, label: '', color: '' };
@@ -37,8 +141,11 @@ export default function PublicSignUpPage() {
 
   const strength = passwordStrength();
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+
+    const activeFlags = getClientSecurityFlags();
+    const isWeakPasswordActive = activeFlags.includes('weak_password');
 
     // Frontend Validations
     if (!form.fullName.trim()) {
@@ -53,7 +160,7 @@ export default function PublicSignUpPage() {
       setError('Email không đúng định dạng');
       return;
     }
-    if (form.password.length < 8) {
+    if (!isWeakPasswordActive && form.password.length < 8) {
       setError('Mật khẩu phải có ít nhất 8 ký tự');
       return;
     }
@@ -65,41 +172,36 @@ export default function PublicSignUpPage() {
     setError(null);
     setIsLoading(true);
 
-    try {
-      const response = await apiClient<{
-        success: boolean;
-        message: string;
-        data?: {
-          message?: string;
-        };
-      }>('/auth/register', {
-        method: 'POST',
-        body: JSON.stringify({
-          fullName: form.fullName.trim(),
-          email: form.email.trim(),
-          password: form.password,
-          confirmPassword: form.confirm
-        })
-      });
+    const fd = new FormData(e.currentTarget);
 
-      if (response.success) {
-        setSuccessMessage(
-          response.data?.message ||
-          'Đăng ký thành công! Vui lòng kiểm tra hộp thư email của bạn để hoàn tất xác thực.'
-        );
-        setStep(2);
-      } else {
-        setError(response.message || 'Đăng ký thất bại.');
-      }
-    } catch (err: any) {
-      setError(err.message || 'Đã xảy ra lỗi khi đăng ký.');
-    } finally {
-      setIsLoading(false);
+    if (!showV2) {
+      const freshToken = await getFreshV3Token();
+      fd.set('recaptchaV3Token', freshToken);
+      fd.delete('recaptchaV2Token');
+    } else {
+      fd.set('recaptchaV2Token', v2Token);
+      fd.delete('recaptchaV3Token');
     }
+
+    startTransition(async () => {
+      try {
+        await formAction(fd);
+      } finally {
+        setIsLoading(false);
+      }
+    });
   };
 
   return (
     <div className='relative flex min-h-screen overflow-hidden bg-gradient-to-br from-slate-50 via-white to-primary/5 dark:from-gray-950 dark:via-gray-900 dark:to-primary/10'>
+      {!showV2 && (
+        <Script
+          id="recaptcha-v3-script-tag"
+          src={`https://www.google.com/recaptcha/api.js?render=${v3SiteKey}`}
+          strategy='afterInteractive'
+          onLoad={handleRecaptchaLoad}
+        />
+      )}
 
       {/* Blobs */}
       <div className='pointer-events-none absolute -top-32 -right-32 h-96 w-96 rounded-full bg-primary/10 blur-3xl' />
@@ -268,6 +370,7 @@ export default function PublicSignUpPage() {
                     <Icons.user size={16} className='absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground' />
                     <Input
                       id='fullName'
+                      name='fullName'
                       placeholder='Nguyễn Văn A'
                       className='h-11 pl-9'
                       value={form.fullName}
@@ -283,6 +386,7 @@ export default function PublicSignUpPage() {
                     <Icons.email size={16} className='absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground' />
                     <Input
                       id='signup-email'
+                      name='email'
                       type='email'
                       placeholder='example@email.com'
                       className='h-11 pl-9'
@@ -299,6 +403,7 @@ export default function PublicSignUpPage() {
                     <Icons.lock size={16} className='absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground' />
                     <Input
                       id='signup-password'
+                      name='password'
                       type={showPassword ? 'text' : 'password'}
                       placeholder='Tối thiểu 8 ký tự'
                       className='h-11 pl-9 pr-10'
@@ -339,6 +444,7 @@ export default function PublicSignUpPage() {
                     <Icons.lock size={16} className='absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground' />
                     <Input
                       id='confirm'
+                      name='confirmPassword'
                       type={showConfirm ? 'text' : 'password'}
                       placeholder='Nhập lại mật khẩu'
                       className={cn(
@@ -363,13 +469,43 @@ export default function PublicSignUpPage() {
                   )}
                 </div>
 
+                {showV2 && (
+                  <div className="flex justify-center py-2 border border-dashed border-primary/20 rounded-xl bg-primary/5 p-4 my-2">
+                    <div className="flex flex-col items-center gap-2">
+                      <p className="text-xs font-semibold text-primary">
+                        {useMockCheckbox
+                          ? "Xác minh người dùng:"
+                          : "Vui lòng thực hiện xác thực:"}
+                      </p>
+
+                      {useMockCheckbox ? (
+                        <div className="flex items-center gap-2 border p-3 rounded-lg bg-background shadow-sm animate-in fade-in duration-200">
+                          <input
+                            type="checkbox"
+                            id="mock-captcha-checkbox"
+                            className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary cursor-pointer"
+                            onChange={(e) => {
+                              setV2Token(e.target.checked ? 'mock-v2-token' : '');
+                            }}
+                          />
+                          <label htmlFor="mock-captcha-checkbox" className="text-xs text-foreground font-medium select-none cursor-pointer">
+                            Tôi xác nhận tôi là người dùng thật
+                          </label>
+                        </div>
+                      ) : (
+                        <div id="recaptcha-v2-container"></div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
                 <div className='pt-1'>
                   <Button
                     type='submit'
                     className='w-full h-11 font-semibold'
-                    disabled={isLoading || (!!form.confirm && form.confirm !== form.password)}
+                    disabled={isLoading || isPending || (!!form.confirm && form.confirm !== form.password) || (showV2 && !v2Token)}
                   >
-                    {isLoading ? (
+                    {isLoading || isPending ? (
                       <span className='flex items-center gap-2'>
                         <Spinner />
                         Đang tạo tài khoản...

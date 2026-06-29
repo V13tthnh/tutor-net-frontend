@@ -68,10 +68,10 @@ const PANEL_MAP: Record<SecurityFlag, React.ReactNode> = {
 
 // ─── Severity helpers ────────────────────────────────────────────────────────
 const SEVERITY_COLOR: Record<Severity, string> = {
-  Critical: 'bg-red-500/20 text-red-400 border-red-500/30',
-  High: 'bg-orange-500/20 text-orange-400 border-orange-500/30',
-  Medium: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
-  Low: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
+  Critical: 'bg-red-50 text-red-800 dark:bg-red-500/20 dark:text-red-400 border-red-200 dark:border-red-500/30',
+  High: 'bg-orange-50 text-orange-800 dark:bg-orange-500/20 dark:text-orange-400 border-orange-200 dark:border-orange-500/30',
+  Medium: 'bg-amber-50 text-amber-800 dark:bg-amber-500/20 dark:text-amber-300 border-amber-200 dark:border-amber-500/30',
+  Low: 'bg-blue-50 text-blue-800 dark:bg-blue-500/20 dark:text-blue-400 border-blue-200 dark:border-blue-500/30',
 };
 
 const CATEGORY_COLOR: Record<VulnCategory, string> = {

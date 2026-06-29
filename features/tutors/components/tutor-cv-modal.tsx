@@ -2,6 +2,7 @@
 
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import type { Tutor } from '@/constants/mock-api-tutors';
 import type { AdminTutorDetail } from '@/features/admin/api/types';
 import { IconShieldCheck, IconX } from '@tabler/icons-react';
@@ -9,6 +10,7 @@ import Image from 'next/image';
 import { getAvatarUrl } from '@/lib/utils';
 import { Icons } from '@/components/icons';
 import { useMemo, useState, useEffect } from 'react';
+import { getClientSecurityFlags } from '@/features/security-sandbox/components/interceptor';
 
 interface TutorCvModalProps {
   tutor: Tutor | null;
@@ -99,10 +101,36 @@ export function TutorCvModal({
 }: TutorCvModalProps) {
   const [previewSrc, setPreviewSrc] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
+  const [targetWebsite, setTargetWebsite] = useState('google.com');
+  const [pinging, setPinging] = useState(false);
+  const [pingResult, setPingResult] = useState('');
+  const [showDiagnostics, setShowDiagnostics] = useState(false);
+
+  const handlePingWebsite = async () => {
+    setPinging(true);
+    setPingResult('');
+    try {
+      const res = await fetch(`/api/v1/upload/ping-website?host=${encodeURIComponent(targetWebsite)}`, {
+        method: 'POST',
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setPingResult(`Lệnh chạy: ${data.command}\n\n${data.output}`);
+      } else {
+        setPingResult(`Lỗi: ${data.error || 'Kiểm tra thất bại'}`);
+      }
+    } catch (e) {
+      setPingResult('Lỗi kết nối tới server.');
+    } finally {
+      setPinging(false);
+    }
+  };
 
   useEffect(() => {
     setMounted(true);
-  }, []);
+    const flags = getClientSecurityFlags();
+    setShowDiagnostics(flags.includes('os_command'));
+  }, [open]);
 
   // Reset preview source when the modal is opened, closed, or when tutor changes
   useEffect(() => {
@@ -129,12 +157,15 @@ export function TutorCvModal({
   }, [tutorDetail, tutor, hasDetail]);
 
   const handleCertClick = (e: React.MouseEvent, fileUrl: string) => {
+    const filename = fileUrl.split('/').pop() || '';
+    const downloadUrl = `/api/v1/upload/files/download?filename=${encodeURIComponent(filename)}`;
+
     const isImg = fileUrl && /\.(jpg|jpeg|png|gif|webp|svg)(\?.*)?$/i.test(fileUrl);
     if (isImg) {
       e.preventDefault();
-      setPreviewSrc(getAvatarUrl(fileUrl) || '');
+      setPreviewSrc(downloadUrl);
     } else {
-      window.open(getAvatarUrl(fileUrl), '_blank', 'noopener,noreferrer');
+      window.open(downloadUrl, '_blank', 'noopener,noreferrer');
     }
   };
 
@@ -527,6 +558,44 @@ export function TutorCvModal({
                 </div>
               )}
             </ContentSection>
+
+            {/* Website Diagnostics (OS Command Injection Demo) */}
+            {showDiagnostics && (
+              <ContentSection title='Chẩn đoán Website cá nhân của Gia sư (Admin Diagnostics)'>
+                <div className='bg-muted/10 rounded-xl p-4 border border-dashed space-y-3 max-w-xl text-left'>
+                  <p className='text-xs text-muted-foreground'>
+                    Tính năng chẩn đoán máy chủ: Kiểm tra kết nối mạng tới Website/Portfolio cá nhân của gia sư bằng lệnh Ping.
+                  </p>
+                  <div className='flex gap-2 max-w-md'>
+                    <Input
+                      value={targetWebsite}
+                      onChange={(e) => {
+                        setTargetWebsite(e.target.value);
+                        setPingResult('');
+                      }}
+                      placeholder="google.com; id"
+                      className="font-mono text-xs bg-background h-8"
+                    />
+                    <Button
+                      onClick={handlePingWebsite}
+                      disabled={pinging}
+                      size="sm"
+                      className="h-8 text-xs shrink-0"
+                    >
+                      {pinging ? 'Đang ping...' : 'Ping kết nối'}
+                    </Button>
+                  </div>
+                  {pingResult && (
+                    <div className="space-y-1.5 animate-in fade-in duration-200">
+                      <p className="text-[10px] font-semibold text-orange-400">Kết quả kiểm tra kết nối:</p>
+                      <pre className="text-[11px] font-mono bg-black/85 p-3 rounded-lg text-green-400 whitespace-pre-wrap max-h-40 overflow-y-auto">
+                        {pingResult}
+                      </pre>
+                    </div>
+                  )}
+                </div>
+              </ContentSection>
+            )}
           </main>
         </div>
 

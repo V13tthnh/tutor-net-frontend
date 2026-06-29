@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { tutorsQueryOptions } from '../api/queries';
 import { TutorCard } from './tutor-card';
@@ -33,8 +33,8 @@ function TutorCardSkeleton({ layout = 'grid' }: { layout?: 'grid' | 'list' }) {
         </div>
       </div>
       <div className={cn(
-        isList 
-          ? 'sm:w-64 sm:border-l p-5 justify-center gap-4 flex flex-col items-center mt-3 sm:mt-0' 
+        isList
+          ? 'sm:w-64 sm:border-l p-5 justify-center gap-4 flex flex-col items-center mt-3 sm:mt-0'
           : 'mt-auto flex items-center justify-between pt-3'
       )}>
         <Skeleton className='h-8 w-24' />
@@ -54,6 +54,61 @@ export function TutorGrid({ filters, onContactClick, onInviteClick }: TutorGridP
   const { data, isLoading, isError } = useQuery(tutorsQueryOptions(filters));
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
+  // SQLi interception state
+  const [sqliData, setSqliData] = useState<any[] | null>(null);
+  const [sqliError, setSqliError] = useState<string>('');
+
+  // Use useEffect instead of directly in render to prevent hydration mismatch
+  const [flags, setFlags] = useState<string[]>([]);
+
+  useEffect(() => {
+    setFlags(getClientSecurityFlags());
+  }, []);
+
+  const searchVal = filters.search || '';
+
+  useEffect(() => {
+    const currentFlags = getClientSecurityFlags();
+    if (currentFlags.includes('union_sqli') && (/'\s*union\s+select/i.test(searchVal) || /or\s+1\s*=\s*1/i.test(searchVal) || /drop\s+table/i.test(searchVal))) {
+      fetch(`/api/demo/sqli/vulnerable?name=${encodeURIComponent(searchVal)}`)
+        .then(res => res.json())
+        .then(resData => {
+          if (resData.data) {
+            setSqliData(resData.data);
+          } else if (resData.error) {
+            setSqliError(resData.error);
+          }
+        })
+        .catch(err => setSqliError(err.message));
+    } else {
+      setSqliData(null);
+      setSqliError('');
+    }
+  }, [searchVal]);
+
+  if (sqliData || sqliError) {
+    return (
+      <div className="space-y-4 w-full">
+
+        {sqliError ? (
+          <div className="text-red-500 font-mono text-sm bg-red-500/10 p-4 rounded border border-red-500/20">
+            {sqliError}
+          </div>
+        ) : (
+          <div className="flex flex-col gap-2 font-mono text-sm">
+            {sqliData?.map((row, idx) => (
+              <div key={idx} className="bg-muted/50 p-3 border border-border rounded hover:bg-muted transition-colors text-foreground">
+                {Object.entries(row).map(([k, v]) => `${k}: ${v}`).join(' | ')}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+
+
   if (isLoading) {
     return (
       <div className='space-y-6'>
@@ -65,10 +120,10 @@ export function TutorGrid({ filters, onContactClick, onInviteClick }: TutorGridP
             <Skeleton className="h-8 w-8 rounded-md" />
           </div>
         </div>
-        
+
         <div className={cn(
-          viewMode === 'grid' 
-            ? 'grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4' 
+          viewMode === 'grid'
+            ? 'grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'
             : 'flex flex-col gap-5'
         )}>
           {Array.from({ length: 12 }).map((_, i) => (
@@ -90,19 +145,18 @@ export function TutorGrid({ filters, onContactClick, onInviteClick }: TutorGridP
   }
 
   if (!data || data.tutors.length === 0) {
-    const flags = typeof window !== 'undefined' ? getClientSecurityFlags() : [];
     const isHtmlInjectionActive = flags.includes('html_injection');
-    const searchVal = filters.search;
+    const searchValForHtml = filters.search;
 
     return (
       <div className='flex flex-col items-center justify-center py-20 text-center'>
         <IconUsersGroup size={48} className='text-muted-foreground mb-4' />
         <p className='text-foreground text-lg font-semibold'>
-          Không tìm thấy gia sư {searchVal ? (
+          Không tìm thấy gia sư {searchValForHtml ? (
             isHtmlInjectionActive ? (
-              <span dangerouslySetInnerHTML={{ __html: searchVal }} />
+              <span dangerouslySetInnerHTML={{ __html: searchValForHtml }} />
             ) : (
-              <span>"{searchVal}"</span>
+              <span>"{searchValForHtml}"</span>
             )
           ) : ''}
         </p>
@@ -146,8 +200,8 @@ export function TutorGrid({ filters, onContactClick, onInviteClick }: TutorGridP
 
       {/* Grid / List */}
       <div className={cn(
-        viewMode === 'grid' 
-          ? 'grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4' 
+        viewMode === 'grid'
+          ? 'grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'
           : 'flex flex-col gap-5'
       )}>
         {data.tutors.map((tutor) => (

@@ -53,10 +53,25 @@ async function handleResponse<T>(res: Response): Promise<T> {
   throw new ApiHttpError(res.status, message, body);
 }
 
-function jsonPost(url: string, payload: unknown): Promise<Response> {
+async function jsonPost(url: string, payload: unknown): Promise<Response> {
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+
+  if (typeof window === 'undefined') {
+    try {
+      const { cookies } = await import("next/headers");
+      const cookieStore = await cookies();
+      const sandboxCookie = cookieStore.get("security_sandbox")?.value;
+      if (sandboxCookie) {
+        headers["Cookie"] = `security_sandbox=${sandboxCookie}`;
+      }
+    } catch (e) {
+      // Ignore if cookies are not available
+    }
+  }
+
   return fetch(url, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers,
     body: JSON.stringify(payload),
     cache: "no-store",
   });

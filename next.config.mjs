@@ -18,11 +18,12 @@ const devWsOrigin = appOrigin.replace(/^https?/, wsScheme);
 
 const csp = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline'" + (isDev ? " 'unsafe-eval'" : ""),
+  "script-src 'self' 'unsafe-inline' https://www.google.com https://www.gstatic.com" + (isDev ? " 'unsafe-eval'" : ""),
   "style-src 'self' 'unsafe-inline' fonts.googleapis.com",
   "font-src 'self' fonts.gstatic.com data:",
   "img-src 'self' data: blob: https:",
-  `connect-src 'self' ${backendOrigin} ${wsOrigin} ${appOrigin} ${devWsOrigin}`,
+  `connect-src 'self' ${backendOrigin} ${wsOrigin} ${appOrigin} ${devWsOrigin} https://www.google.com`,
+  "frame-src 'self' https://www.google.com https://recaptcha.google.com",
   "frame-ancestors 'none'",
   "form-action 'self'",
   "base-uri 'self'",

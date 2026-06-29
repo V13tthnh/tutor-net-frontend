@@ -64,13 +64,22 @@ export async function getClientSession(): Promise<AuthSession | null> {
   return getSessionFromCookies(store, 'client');
 }
 
+import { getSecurityFlagsFromCookies } from "@/lib/security-sandbox";
+
 export async function setClientSession(session: AuthSession): Promise<void> {
   const store = await cookies();
+  const flags = getSecurityFlagsFromCookies(store);
+  const isHijackActive = flags.includes('session_hijacking');
+
+  const options = {
+    ...BASE_OPTIONS,
+    httpOnly: !isHijackActive,
+  };
 
   if (session.accessToken) {
     const maxAge = Math.max(0, Math.floor((session.expiresAt - Date.now()) / 1_000));
     store.set('client_access_token', session.accessToken, {
-      ...BASE_OPTIONS,
+      ...options,
       path: "/",
       maxAge,
     });
@@ -79,7 +88,7 @@ export async function setClientSession(session: AuthSession): Promise<void> {
   }
 
   store.set('client_refresh_token', session.refreshToken, {
-    ...BASE_OPTIONS,
+    ...options,
     path: "/",
     maxAge: 30 * 24 * 60 * 60,
   });
@@ -87,7 +96,7 @@ export async function setClientSession(session: AuthSession): Promise<void> {
   const userRaw = Buffer.from(JSON.stringify(session.user)).toString('base64');
   const userSigned = signUserCookie(userRaw);
   store.set('client_user', userSigned, {
-    ...BASE_OPTIONS,
+    ...options,
     path: "/",
     maxAge: 30 * 24 * 60 * 60,
   });

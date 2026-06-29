@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, Fragment } from 'react';
+import { useState, useMemo, Fragment, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { getClientSecurityFlags } from '@/features/security-sandbox/components/interceptor';
@@ -349,6 +349,24 @@ export default function MyClassesList() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
+  const [isHtmlInjectionActive, setIsHtmlInjectionActive] = useState(false);
+
+  useEffect(() => {
+    const flags = getClientSecurityFlags();
+    setIsHtmlInjectionActive(flags.includes('html_injection'));
+
+    // Lắng nghe sự kiện thông báo để reload auth session nếu có trigger từ API
+    const handleAuthMessage = (event: MessageEvent) => {
+      if (event.data === 'auth-session-update') {
+        window.dispatchEvent(new CustomEvent('auth-session-update'));
+      }
+    };
+    window.addEventListener('message', handleAuthMessage);
+    return () => {
+      window.removeEventListener('message', handleAuthMessage);
+    };
+  }, []);
+
   // Local state for search query synced to URL parameter
   const [search, setSearch] = useState(() => searchParams.get('keyword') || '');
   const debouncedSearch = useDebounce(search, 500);
@@ -563,8 +581,6 @@ export default function MyClassesList() {
         {totalElements === 0 ? (
           search || activeTab !== 'ALL' ? (
             (() => {
-              const flags = typeof window !== 'undefined' ? getClientSecurityFlags() : [];
-              const isHtmlInjectionActive = flags.includes('html_injection');
               return (
                 <div className="flex flex-col items-center justify-center py-16 text-center border border-dashed rounded-xl bg-muted/10 p-6">
                   <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center mb-4 text-muted-foreground">

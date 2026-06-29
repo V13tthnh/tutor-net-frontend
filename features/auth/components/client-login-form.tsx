@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useActionState, useEffect } from 'react';
+import { useState, useActionState, useEffect, useRef, useTransition } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { clientLoginAction, type ClientLoginState } from '@/features/auth/actions/client-login';
@@ -9,27 +9,157 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Icons } from '@/components/icons';
+import Script from 'next/script';
+
+import { getClientSecurityFlags } from '@/features/security-sandbox/components/interceptor';
 
 const initialState: ClientLoginState = {};
+
+const v3SiteKey = process.env.NEXT_PUBLIC_RECAPTCHA_V3_SITE_KEY || '6Ldt4Q4TAAAAAO1v4a_4v4x8e-4N_v4t_4e4t_4e';
+const v2SiteKey = process.env.NEXT_PUBLIC_RECAPTCHA_V2_SITE_KEY || '6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI';
 
 export default function PublicSignInPage() {
   const [showPassword, setShowPassword] = useState(false);
   const searchParams = useSearchParams();
-  const [state, formAction, isPending] = useActionState(clientLoginAction, initialState);
+
+  // FIX Bug 2: Tách isPending ra khỏi useActionState, dùng useTransition
+  // để có thể await getV3Token() trước khi dispatch action
+  const [state, formAction] = useActionState(clientLoginAction, initialState);
+  const [isPending, startTransition] = useTransition();
+
+  const [activeFlags, setActiveFlags] = useState<string[]>([]);
+
+  // reCAPTCHA states
+  const [v2Token, setV2Token] = useState('');
+  const [showV2, setShowV2] = useState(true); // Mặc định bật reCAPTCHA v2 để hiển thị checkbox
+  const [useMockCheckbox, setUseMockCheckbox] = useState(false);
+
+  // FIX Bug 1: Không lưu v3Token vào state nữa — sẽ lấy fresh token tại submit
+  // Chỉ track xem script đã load chưa
+  const recaptchaReadyRef = useRef(false);
 
   const redirectTo = searchParams.get('next') || searchParams.get('redirectTo') || undefined;
+
+  useEffect(() => {
+    setActiveFlags(getClientSecurityFlags());
+  }, []);
+
+  useEffect(() => {
+    const urlSession = searchParams.get('TUTOR_SESSION');
+    if (urlSession) {
+      document.cookie = `TUTOR_SESSION=${urlSession}; path=/; max-age=3600`;
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     if (state.success && state.redirectTo) {
       window.location.href = state.redirectTo;
     }
+    if (state.captchaFallback) {
+      setShowV2(true);
+    }
   }, [state]);
 
-  const emailError    = state.fieldErrors?.email;
+  // FIX Bug 1: Script load chỉ đánh dấu ready, KHÔNG execute token ở đây
+  const handleRecaptchaLoad = () => {
+    recaptchaReadyRef.current = true;
+  };
+
+  // FIX Bug 1: Hàm lấy v3 token fresh — gọi đúng lúc submit
+  async function getFreshV3Token(): Promise<string> {
+    return new Promise((resolve) => {
+      const grecaptcha = (window as any).grecaptcha;
+      if (!grecaptcha || !recaptchaReadyRef.current) {
+        resolve('mock-v3-token');
+        return;
+      }
+      grecaptcha.ready(() => {
+        grecaptcha
+          .execute(v3SiteKey, { action: 'login' })
+          .then((token: string) => resolve(token))
+          .catch(() => resolve('mock-v3-token'));
+      });
+    });
+  }
+
+  useEffect(() => {
+    if (!showV2 || typeof window === 'undefined') return;
+
+    // Load Google reCAPTCHA v2 chính thức để hiển thị Widget Checkbox (kể cả ở Localhost dùng Test Key)
+
+    // Production (domain thật): load Google reCAPTCHA v2 bình thường
+    (window as any).grecaptcha = undefined;
+    recaptchaReadyRef.current = false;
+
+    const oldScript = document.getElementById('recaptcha-v3-script-tag');
+    if (oldScript) oldScript.remove();
+
+    const badges = document.getElementsByClassName('grecaptcha-badge');
+    while (badges.length > 0) badges[0].remove();
+
+    const script = document.createElement('script');
+    script.id = 'recaptcha-v2-script-tag';
+    script.src = `https://www.google.com/recaptcha/api.js?render=explicit`;
+    script.async = true;
+    script.defer = true;
+    script.onload = () => {
+      const grecaptcha = (window as any).grecaptcha;
+      if (!grecaptcha) return;
+      grecaptcha.ready(() => {
+        const container = document.getElementById('recaptcha-v2-container');
+        if (container) container.innerHTML = '';
+        try {
+          grecaptcha.render('recaptcha-v2-container', {
+            sitekey: v2SiteKey,
+            callback: (token: string) => setV2Token(token),
+            'expired-callback': () => setV2Token(''),
+            'error-callback': () => {
+              setUseMockCheckbox(true);
+              setV2Token('');
+            },
+          });
+        } catch {
+          setUseMockCheckbox(true);
+        }
+      });
+    };
+    script.onerror = () => setUseMockCheckbox(true);
+    document.body.appendChild(script);
+  }, [showV2]);
+
+  // FIX Bug 2: Chuyển submit sang onSubmit handler để có thể await token
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const fd = new FormData(e.currentTarget);
+
+    if (!showV2) {
+      // FIX Bug 1: Lấy token fresh ngay tại thời điểm submit, không dùng token cũ
+      const freshToken = await getFreshV3Token();
+      fd.set('recaptchaV3Token', freshToken);
+      fd.delete('recaptchaV2Token');
+    } else {
+      fd.set('recaptchaV2Token', v2Token);
+      fd.delete('recaptchaV3Token');
+    }
+
+    startTransition(() => {
+      formAction(fd);
+    });
+  };
+
+  const emailError = state.fieldErrors?.email;
   const passwordError = state.fieldErrors?.password;
 
   return (
     <div className='relative flex min-h-screen overflow-hidden bg-gradient-to-br from-slate-50 via-white to-primary/5 dark:from-gray-950 dark:via-gray-900 dark:to-primary/10'>
+      {!showV2 && (
+        <Script
+          id="recaptcha-v3-script-tag"
+          src={`https://www.google.com/recaptcha/api.js?render=${v3SiteKey}`}
+          strategy='afterInteractive'
+          onLoad={handleRecaptchaLoad}
+        />
+      )}
 
       {/* ── Decorative background blobs ── */}
       <div className='pointer-events-none absolute -top-32 -left-32 h-96 w-96 rounded-full bg-primary/10 blur-3xl' />
@@ -124,27 +254,8 @@ export default function PublicSignInPage() {
             </p>
           </div>
 
-          {/* Social buttons */}
-          {/* <div className='grid grid-cols-2 gap-3 mb-6'>
-            <Button variant='outline' type='button' className='gap-2 h-11'>
-              <Icons.google size={17} />
-              Google
-            </Button>
-            <Button variant='outline' type='button' className='gap-2 h-11'>
-              <Icons.facebook size={17} className='text-blue-600' />
-              Facebook
-            </Button>
-          </div> */}
-
-          {/* Divider */}
-          {/* <div className='relative mb-6 flex items-center gap-3'>
-            <div className='flex-1 border-t border-border' />
-            <span className='text-xs text-muted-foreground'>hoặc đăng nhập với email</span>
-            <div className='flex-1 border-t border-border' />
-          </div> */}
-
-          {/* Form */}
-          <form action={formAction} className='space-y-4' noValidate>
+          {/* FIX Bug 2: Dùng onSubmit thay action={formAction} */}
+          <form onSubmit={handleSubmit} className='space-y-4' noValidate>
             {redirectTo && <input type='hidden' name='redirectTo' value={redirectTo} />}
 
             {/* ── Email ── */}
@@ -164,7 +275,6 @@ export default function PublicSignInPage() {
                   aria-describedby={emailError ? 'email-error' : undefined}
                 />
               </div>
-              {/* Field-level error — hiển thị text đỏ dưới input */}
               {emailError && (
                 <p id='email-error' className='text-sm text-red-500' role='alert' aria-live='polite'>
                   {emailError}
@@ -202,7 +312,6 @@ export default function PublicSignInPage() {
                   {showPassword ? <Icons.eyeOff size={22} /> : <Icons.eye size={22} />}
                 </button>
               </div>
-              {/* Field-level error — hiển thị text đỏ dưới input */}
               {passwordError && (
                 <p id='password-error' className='text-sm text-red-500' role='alert' aria-live='polite'>
                   {passwordError}
@@ -222,14 +331,65 @@ export default function PublicSignInPage() {
             )}
 
             <div className='flex items-center gap-2'>
-              <Checkbox
-                id='remember'
-                name='remember'
-              />
+              <Checkbox id='remember' name='remember' />
               <label htmlFor='remember' className='text-sm text-muted-foreground cursor-pointer select-none'>
                 Ghi nhớ đăng nhập
               </label>
             </div>
+
+            {showV2 && (
+              <div className="flex justify-center py-2 border border-dashed border-primary/20 rounded-xl bg-primary/5 p-4 my-2">
+                <div className="flex flex-col items-center gap-2">
+                  <p className="text-xs font-semibold text-primary">
+                    {useMockCheckbox
+                      ? "Xác minh người dùng:"
+                      : "Vui lòng thực hiện xác thực:"}
+                  </p>
+
+                  {useMockCheckbox ? (
+                    <div className="flex items-center gap-2 border p-3 rounded-lg bg-background shadow-sm animate-in fade-in duration-200">
+                      <input
+                        type="checkbox"
+                        id="mock-captcha-checkbox"
+                        className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary cursor-pointer"
+                        onChange={(e) => {
+                          // FIX Bug 3: mock token được nhận diện ở server, không cần gọi Google
+                          setV2Token(e.target.checked ? 'mock-v2-token' : '');
+                        }}
+                      />
+                      <label htmlFor="mock-captcha-checkbox" className="text-xs text-foreground font-medium select-none cursor-pointer">
+                        Tôi xác nhận tôi là người dùng thật
+                      </label>
+                    </div>
+                  ) : (
+                    <div id="recaptcha-v2-container"></div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* ── Sandbox Session Security HUD ── */}
+            {activeFlags.includes('session_hijacking') && (
+              <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl text-xs space-y-1 mt-2 text-amber-800 dark:text-amber-300">
+                <p className="font-semibold flex items-center gap-1.5">
+                  <Icons.info size={14} className="text-amber-500 shrink-0" /> Sandbox: Đang kích hoạt Session Hijacking!
+                </p>
+                <p className="text-[11px] leading-relaxed text-muted-foreground">
+                  Cookie <code>client_access_token</code> sẽ được thiết lập <strong>không có cờ HttpOnly</strong>. Bạn có thể mở Console (F12) và gõ <code>document.cookie</code> để đọc trộm token đăng nhập sau khi vào hệ thống.
+                </p>
+              </div>
+            )}
+
+            {activeFlags.includes('session_fixation') && (
+              <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl text-xs space-y-1 mt-2 text-amber-800 dark:text-amber-300">
+                <p className="font-semibold flex items-center gap-1.5">
+                  <Icons.info size={14} className="text-amber-500 shrink-0" /> Sandbox: Đang kích hoạt Session Fixation!
+                </p>
+                <p className="text-[11px] leading-relaxed text-muted-foreground">
+                  Hệ thống sẽ giữ nguyên cookie Session ID cố định trong <code>TUTOR_SESSION</code> (không regenerate phiên làm việc) sau khi bạn đăng nhập thành công.
+                </p>
+              </div>
+            )}
 
             <Button
               type='submit'
@@ -267,11 +427,13 @@ export default function PublicSignInPage() {
 }
 
 // form submit
-//   → clientLoginAction()        ← actions/client-login.ts
-//       → validateLoginInput()   ← lib/login-validation.ts (field-level)
-//       → loginClientService()   ← api/service.ts
-//           → queryClientLogin() ← api/queries.ts (POST /auth/login)
-//       → setClientSession()     ← lib/session.server.ts
+//   → handleSubmit()               ← await getFreshV3Token() trước khi dispatch
+//   → clientLoginAction()          ← actions/client-login.ts
+//       → verifyRecaptcha()        ← mock token early-return, hoặc gọi Google
+//       → validateLoginInput()     ← lib/login-validation.ts (field-level)
+//       → loginClientService()     ← api/service.ts
+//           → queryClientLogin()   ← api/queries.ts (POST /auth/login)
+//       → setClientSession()       ← lib/session.server.ts
 //           → cookie "client_session" { httpOnly, path: "/", maxAge: ... }
 //       → return { success: true, redirectTo: "/" }
 //   → useEffect: window.location.href = redirectTo  ← PublicSignInPage.tsx

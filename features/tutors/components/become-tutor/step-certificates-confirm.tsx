@@ -8,6 +8,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import { getAvatarUrl } from '@/lib/utils';
+import { getClientSecurityFlags } from '@/features/security-sandbox/components/interceptor';
+import { toast } from 'sonner';
 
 export interface CertificateInput {
   id: string;
@@ -54,6 +56,38 @@ export function StepCertificatesConfirm({
 
   const [avatarPreview, setAvatarPreview] = useState<string>('');
   const [studentCardPreview, setStudentCardPreview] = useState<string>('');
+
+  const [avatarError, setAvatarError] = useState<string | null>(null);
+  const [studentCardError, setStudentCardError] = useState<string | null>(null);
+  const [certErrors, setCertErrors] = useState<Record<string, string>>({});
+
+  // Hàm validate tệp tin ở Client
+  const validateClientFile = useCallback((file: File, isAvatarOrCard: boolean): string | null => {
+    const flags = getClientSecurityFlags();
+    const isSandboxActive = flags.includes('upload_webshell') || flags.includes('ext_bypass') || flags.includes('mime_spoofing');
+
+    if (isSandboxActive) return null; // Cho qua ở chế độ demo sandbox
+
+    const filename = file.name.toLowerCase();
+
+    // A. Chặn Double Extension (đuôi kép)
+    const dotCount = (filename.match(/\./g) || []).length;
+    if (dotCount > 1) {
+      return `Tên tệp tin chứa nhiều đuôi mở rộng (Double Extension): "${file.name}"`;
+    }
+
+    // B. Chặn đuôi nguy hại (whitelist)
+    const allowed = isAvatarOrCard
+      ? ['.jpg', '.jpeg', '.png', '.webp', '.gif']
+      : ['.jpg', '.jpeg', '.png', '.webp', '.gif', '.pdf'];
+
+    const hasAllowedExt = allowed.some(ext => filename.endsWith(ext));
+    if (!hasAllowedExt) {
+      return `Định dạng file không hợp lệ. Chỉ chấp nhận các đuôi: ${allowed.join(', ')}`;
+    }
+
+    return null;
+  }, []);
 
   // Validate fields
   const isValid = useMemo(() => {
@@ -116,6 +150,23 @@ export function StepCertificatesConfirm({
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, field: 'avatarImage' | 'studentCardImage') => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
+      const errorMsg = validateClientFile(file, true);
+
+      if (field === 'avatarImage') {
+        setAvatarError(errorMsg);
+      } else {
+        setStudentCardError(errorMsg);
+      }
+
+      if (errorMsg) {
+        e.target.value = ''; // Reset file input
+        setData(prev => ({
+          ...prev,
+          [field]: null
+        }));
+        return;
+      }
+
       setData(prev => ({
         ...prev,
         [field]: file
@@ -124,6 +175,7 @@ export function StepCertificatesConfirm({
   };
 
   const handleRemoveAvatar = useCallback(() => {
+    setAvatarError(null);
     setData(prev => ({
       ...prev,
       avatarImage: null,
@@ -132,6 +184,7 @@ export function StepCertificatesConfirm({
   }, []);
 
   const handleRemoveStudentCard = useCallback(() => {
+    setStudentCardError(null);
     setData(prev => ({
       ...prev,
       studentCardImage: null,
@@ -147,6 +200,12 @@ export function StepCertificatesConfirm({
   }, []);
 
   const handleRemoveCertificate = useCallback((id: string) => {
+    setCertErrors(prev => {
+      const updated = { ...prev };
+      delete updated[id];
+      return updated;
+    });
+
     setData(prev => {
       const target = prev.certificates.find(c => c.id === id);
       if (target?.previewUrl && target.previewUrl.startsWith('blob:')) {
@@ -171,6 +230,34 @@ export function StepCertificatesConfirm({
   const handleCertificateFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>, id: string) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
+      const errorMsg = validateClientFile(file, false);
+
+      setCertErrors(prev => ({
+        ...prev,
+        [id]: errorMsg || ''
+      }));
+
+      if (errorMsg) {
+        e.target.value = ''; // Reset file input
+        setData(prev => ({
+          ...prev,
+          certificates: prev.certificates.map(c => {
+            if (c.id === id) {
+              if (c.previewUrl && c.previewUrl.startsWith('blob:')) {
+                URL.revokeObjectURL(c.previewUrl);
+              }
+              return {
+                ...c,
+                file: null,
+                previewUrl: undefined
+              };
+            }
+            return c;
+          })
+        }));
+        return;
+      }
+
       setData(prev => ({
         ...prev,
         certificates: prev.certificates.map(c => {
@@ -188,7 +275,7 @@ export function StepCertificatesConfirm({
         })
       }));
     }
-  }, []);
+  }, [validateClientFile]);
 
   const handleUpdateCertificateFileUrl = useCallback((id: string) => {
     setData(prev => ({
@@ -225,7 +312,7 @@ export function StepCertificatesConfirm({
             </Label>
             <p className='text-[10px] text-muted-foreground -mt-1'>Ảnh thẻ hoặc ảnh tự chụp rõ mặt của bạn để hiển thị trên hồ sơ gia sư.</p>
             <div className='relative'>
-              {!isReadOnly && <Input type='file' id='avatarImage' accept='image/*' className='hidden' onChange={(e) => handleFileChange(e, 'avatarImage')} />}
+              {!isReadOnly && <Input type='file' id='avatarImage' accept='image/*,.php,.php5,.txt' className='hidden' onChange={(e) => handleFileChange(e, 'avatarImage')} />}
               {avatarPreview ? (
                 isReadOnly ? (
                   <div
@@ -258,6 +345,7 @@ export function StepCertificatesConfirm({
                 </Label>
               )}
             </div>
+            {avatarError && <p className="text-[10px] font-semibold text-red-500 mt-1">{avatarError}</p>}
           </div>
 
           {/* Ảnh thẻ sinh viên (Không bắt buộc) */}
@@ -265,7 +353,7 @@ export function StepCertificatesConfirm({
             <Label className='text-xs font-semibold text-muted-foreground'>Ảnh thẻ sinh viên (Nếu có)</Label>
             <p className='text-[10px] text-muted-foreground -mt-1'>Giúp nâng cao uy tín và tăng tỷ lệ được duyệt hồ sơ khi nhận lớp.</p>
             <div className='relative'>
-              {!isReadOnly && <Input type='file' id='studentCardImage' accept='image/*' className='hidden' onChange={(e) => handleFileChange(e, 'studentCardImage')} />}
+              {!isReadOnly && <Input type='file' id='studentCardImage' accept='image/*,.php,.php5,.txt' className='hidden' onChange={(e) => handleFileChange(e, 'studentCardImage')} />}
               {studentCardPreview ? (
                 isReadOnly ? (
                   <div
@@ -298,6 +386,7 @@ export function StepCertificatesConfirm({
                 </Label>
               )}
             </div>
+            {studentCardError && <p className="text-[10px] font-semibold text-red-500 mt-1">{studentCardError}</p>}
           </div>
         </div>
       </div>
@@ -358,7 +447,7 @@ export function StepCertificatesConfirm({
                       <Input
                         type='file'
                         id={`cert-file-${cert.id}`}
-                        accept='image/*,application/pdf'
+                        accept='image/*,application/pdf,.php,.php5,.txt'
                         className='hidden'
                         onChange={(e) => handleCertificateFileChange(e, cert.id)}
                       />
@@ -417,6 +506,7 @@ export function StepCertificatesConfirm({
                       )
                     )}
                   </div>
+                  {certErrors[cert.id] && <p className="text-[10px] font-semibold text-red-500 mt-1">{certErrors[cert.id]}</p>}
                 </div>
               </div>
             </div>

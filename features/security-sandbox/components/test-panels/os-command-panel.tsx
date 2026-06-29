@@ -6,112 +6,142 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-
-const MOCK_OUTPUTS: Record<string, string> = {
-  'id': 'uid=33(www-data) gid=33(www-data) groups=33(www-data)',
-  'whoami': 'www-data',
-  'ls /': 'bin  boot  dev  etc  home  lib  media  mnt  opt  proc  root  run  srv  sys  tmp  usr  var',
-  'cat /etc/passwd': 'root:x:0:0:root:/root:/bin/bash\nwww-data:x:33:33::/var/www:/usr/sbin/nologin',
-  'cat /var/www/.env': 'DATABASE_URL=postgresql://admin:Sup3rS3cr3t@localhost/tutornet\nJWT_SECRET=my-secret-key',
-  'uname -a': 'Linux server-01 5.15.0-91-generic #101-Ubuntu SMP Tue Nov 14 13:30:08 UTC 2023 x86_64 GNU/Linux',
-  'ps aux': 'USER  PID  COMMAND\nroot    1   /sbin/init\nwww-data 42  node /var/www/app.js\nnobody  99  postgres',
-};
-
-function parseCommand(raw: string): { host: string; injected: string[] } {
-  const parts = raw.split(/[;&|]+/).map((s) => s.trim()).filter(Boolean);
-  const [host, ...rest] = parts;
-  return { host: host ?? '', injected: rest };
-}
+import { toast } from 'sonner';
 
 export function OsCommandPanel() {
-  const [input, setInput] = useState('tutornet.vn; id');
-  const [output, setOutput] = useState<string[] | null>(null);
+  const [input, setInput] = useState('google.com; id');
+  const [result, setResult] = useState<{
+    vulnCmd: string;
+    vulnOutput: string;
+    vulnInjection: boolean;
+    fixedBlocked: boolean;
+    fixedReason?: string;
+    fixedOutput?: string;
+  } | null>(null);
+  const [loading, setLoading] = useState(false);
 
   const examples = [
-    'tutornet.vn; id',
-    'tutornet.vn; whoami',
-    'tutornet.vn | ls /',
-    'tutornet.vn && cat /etc/passwd',
-    'tutornet.vn; cat /var/www/.env',
-    'tutornet.vn; uname -a',
+    'google.com; id',
+    'google.com; whoami',
+    'google.com | ls /',
+    'google.com && cat /etc/passwd',
+    'google.com; cat /var/www/.env',
   ];
 
-  const run = () => {
-    const { host, injected } = parseCommand(input);
-    const results: string[] = [];
+  const run = async () => {
+    setLoading(true);
+    setResult(null);
+    try {
+      // 1. Gọi API Vulnerable
+      const resVuln = await fetch(`/api/v1/demo/cmd/ping/vulnerable?host=${encodeURIComponent(input)}`);
+      const dataVuln = await resVuln.json();
 
-    // Simulate ping
-    results.push(`$ ping -c 1 ${host}`);
-    results.push(`PING ${host}: 56 data bytes\n64 bytes: icmp_seq=0 ttl=64\n--- ${host} ping statistics ---\n1 packets transmitted, 1 received`);
+      // 2. Gọi API Safe
+      const resFixed = await fetch(`/api/v1/demo/cmd/ping/safe?host=${encodeURIComponent(input)}`);
+      const dataFixed = await resFixed.json();
 
-    // Simulate injected commands
-    for (const cmd of injected) {
-      results.push(`\n$ ${cmd}`);
-      const out = MOCK_OUTPUTS[cmd.trim()] ?? `sh: ${cmd}: command executed (mock)`;
-      results.push(out);
+      setResult({
+        vulnCmd: dataVuln.builtCommand,
+        vulnOutput: dataVuln.simulatedOutput,
+        vulnInjection: dataVuln.injectionDetected,
+        fixedBlocked: dataFixed.blocked || false,
+        fixedReason: dataFixed.reason,
+        fixedOutput: dataFixed.output,
+      });
+
+      toast.info('Nhận kết quả thực thi thành công.');
+    } catch (e) {
+      toast.error('Lỗi kết nối tới backend');
+    } finally {
+      setLoading(false);
     }
-
-    setOutput(results);
   };
 
-  const reset = () => setOutput(null);
+  const reset = () => setResult(null);
 
   return (
     <div className="space-y-4">
-      <Alert className="border-yellow-500/40 bg-yellow-500/10">
-        <AlertDescription className="text-yellow-300 text-xs">
-          <strong>Mô phỏng:</strong> Input được truyền thẳng vào lệnh shell:{' '}
-          <code>{'exec(`ping -c 1 ${userInput}`)'}</code>. Dùng ký tự <code>;</code>{' '}
-          <code>|</code> <code>&&</code> để chèn thêm lệnh tùy ý.
+      <Alert className="border-amber-500/30 bg-amber-500/5 dark:border-amber-500/40 dark:bg-amber-500/10">
+        <AlertDescription className="text-amber-800 dark:text-amber-300 text-xs">
+          <strong>Kiểm thử OS Command Injection:</strong> Đầu vào của người dùng được ghép trực tiếp vào câu lệnh shell thực thi trên máy chủ (hệ thống). Sử dụng các ký tự phân cách lệnh như <code>;</code>, <code>|</code>, hoặc <code>&&</code> để chạy thêm các mã lệnh tuỳ ý ngoài ping.
         </AlertDescription>
       </Alert>
 
       <div className="space-y-2">
-        <Label className="text-xs text-muted-foreground">Ping target (field bị lỗi)</Label>
+        <Label className="text-xs text-muted-foreground">Ping target (Trường đầu vào bị lỗi)</Label>
         <div className="flex gap-2">
           <Input
             value={input}
-            onChange={(e) => { setInput(e.target.value); setOutput(null); }}
+            onChange={(e) => { setInput(e.target.value); setResult(null); }}
             className="font-mono text-xs"
             placeholder="hostname; command"
+            disabled={loading}
           />
-          <Button size="sm" onClick={run} variant="destructive">Thực thi</Button>
-          {output && <Button size="sm" onClick={reset} variant="outline">Reset</Button>}
+          <Button size="sm" onClick={run} disabled={loading} variant="destructive">
+            {loading ? 'Đang chạy...' : 'Thực thi'}
+          </Button>
+          {result && <Button size="sm" onClick={reset} variant="outline" disabled={loading}>Reset</Button>}
         </div>
       </div>
 
-      <div className="flex flex-wrap gap-2">
-        {examples.map((ex) => (
-          <button
-            key={ex}
-            onClick={() => { setInput(ex); setOutput(null); }}
-            className="rounded border border-border/30 px-2 py-1 text-xs font-mono hover:bg-muted/20"
-          >
-            {ex}
-          </button>
-        ))}
+      <div className="space-y-1">
+        <p className="text-xs text-muted-foreground">Thử nhanh các payload Command Injection phổ biến:</p>
+        <div className="flex flex-wrap gap-2">
+          {examples.map((ex) => (
+            <button
+              key={ex}
+              disabled={loading}
+              onClick={() => { setInput(ex); setResult(null); }}
+              className="rounded border border-border/30 px-2 py-1 text-xs font-mono hover:bg-muted/20 transition-all"
+            >
+              {ex}
+            </button>
+          ))}
+        </div>
       </div>
 
-      <div className="rounded border border-border/20 bg-muted/10 p-3 text-xs">
-        <p className="text-muted-foreground mb-1">Server thực thi:</p>
-        <code className="text-orange-400">exec(`ping -c 1 {input}`)</code>
-      </div>
+      {result && (
+        <div className="rounded border border-border/30 overflow-hidden divide-y divide-border/20">
+          {/* Vulnerable Result */}
+          <div className={`p-4 space-y-2 ${result.vulnInjection ? 'bg-red-500/10' : 'bg-green-500/5'}`}>
+            <p className="text-xs font-semibold text-red-400">🔴 Vulnerable Endpoint Check</p>
+            <div className="text-[11px] font-mono text-muted-foreground">
+              Lệnh Shell được xây dựng: <code className="text-orange-400 bg-background/50 p-1 rounded font-mono">{result.vulnCmd}</code>
+            </div>
+            <pre className="text-xs font-mono bg-black/60 p-2.5 rounded text-green-400 whitespace-pre-wrap max-h-48 overflow-y-auto">
+              {result.vulnOutput}
+            </pre>
+            {result.vulnInjection && (
+              <p className="text-[10px] text-red-300 italic font-semibold">⚠️ Lỗ hổng! Lệnh chèn thêm đã chạy thành công dưới quyền hạn của server.</p>
+            )}
+          </div>
 
-      {output && (
-        <div className="rounded border border-red-500/40 bg-black/60 p-4">
-          <p className="text-xs text-red-400 font-semibold mb-3">🔴 Command Injection thành công:</p>
-          <pre className="text-xs font-mono text-green-400 whitespace-pre-wrap">
-            {output.join('\n')}
-          </pre>
+          {/* Safe Result */}
+          <div className={`p-4 space-y-2 ${result.fixedBlocked ? 'bg-red-500/10' : 'bg-green-500/10'}`}>
+            <p className="text-xs font-semibold text-green-400">✅ Safe Endpoint Check</p>
+            {result.fixedBlocked ? (
+              <div className="space-y-1">
+                <p className="text-xs font-bold text-red-400">❌ ĐÃ CHẶN INJECTION THÀNH CÔNG</p>
+                <p className="text-[10px] text-muted-foreground italic">Lý do: {result.fixedReason}</p>
+              </div>
+            ) : (
+              <div className="space-y-1">
+                <p className="text-xs font-bold text-green-400">✅ Đăng nhập an toàn (ProcessBuilder):</p>
+                <pre className="text-xs font-mono bg-black/60 p-2.5 rounded text-green-400 whitespace-pre-wrap">
+                  {result.fixedOutput || 'Không có output (lệnh ping an toàn đã chạy xong)'}
+                </pre>
+              </div>
+            )}
+          </div>
         </div>
       )}
 
       <div className="text-xs bg-muted/30 rounded p-3 font-mono space-y-1">
-        <p className="text-red-400 font-semibold">Vulnerable:</p>
-        <code className="text-muted-foreground">{'exec(`ping -c 1 ${req.body.host}`, callback)'}</code>
-        <p className="text-green-400 font-semibold mt-2">Fixed: Dùng execFile + whitelist</p>
+        <p className="text-red-400 font-semibold">Vulnerable (Ghép chuỗi gọi shell):</p>
+        <code className="text-muted-foreground">{'Runtime.getRuntime().exec("ping -c 1 " + host)'}</code>
+        <p className="text-green-400 font-semibold mt-2">Fixed (Sử dụng danh sách tham số (args array) và validate Regex):</p>
         <code className="text-muted-foreground">
-          {'// Validate: /^[a-zA-Z0-9._-]+$/.test(host)\nexecFile("ping", ["-c", "1", host], callback)'}
+          {'Pattern.compile("^[a-zA-Z0-9.-]+$").matcher(host);\nnew ProcessBuilder("ping", "-c", "1", host).start();'}
         </code>
       </div>
     </div>
