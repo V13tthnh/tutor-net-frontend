@@ -23,7 +23,10 @@ export function getClientSecurityFlags(): SecurityFlag[] {
   const lastDot = val.lastIndexOf('.');
   const payload = lastDot === -1 ? val : val.slice(0, lastDot);
   try {
-    const base64 = payload.replace(/-/g, '+').replace(/_/g, '/');
+    let base64 = payload.replace(/-/g, '+').replace(/_/g, '/');
+    while (base64.length % 4) {
+      base64 += '=';
+    }
     const json = atob(base64);
     const parsed = JSON.parse(json);
     if (Array.isArray(parsed)) return parsed as SecurityFlag[];
@@ -38,7 +41,7 @@ export function SecuritySandboxInterceptor() {
   const router = useRouter();
   const [flags, setFlags] = useState<SecurityFlag[]>([]);
   const [isBannerVisible, setIsBannerVisible] = useState(true);
-  
+
   // Vulnerability Alert State
   const [alertOpen, setAlertOpen] = useState(false);
   const [alertTitle, setAlertTitle] = useState('');
@@ -46,6 +49,10 @@ export function SecuritySandboxInterceptor() {
   const [alertPayload, setAlertPayload] = useState('');
   const [vulnCode, setVulnCode] = useState('');
   const [fixedCode, setFixedCode] = useState('');
+
+  // Real SQLi data state
+  const [sqliData, setSqliData] = useState<any[]>([]);
+  const [sqliError, setSqliError] = useState('');
 
   // Fetch flags on mount and route changes
   useEffect(() => {
@@ -80,7 +87,7 @@ export function SecuritySandboxInterceptor() {
 import DOMPurify from 'dompurify';
 <div>{DOMPurify.sanitize(storedPayload)}</div>`);
         setAlertOpen(true);
-        
+
         // Execute the script
         try {
           const scriptContent = extractScriptContent(stored);
@@ -227,21 +234,23 @@ document.getElementById('output').textContent = decodeURIComponent(hash);`);
             const script = extractScriptContent(val);
             if (script) new Function(script)();
             else alert(`XSS Executed: ${val}`);
-          } catch {}
+          } catch { }
         }
       }
 
       // 3. Check SQL Injection (UNION search payload simulation)
-      if (flags.includes('union_sqli') && (/'\s*union\s+select/i.test(val) || /or\s+1\s*=\s*1/i.test(val))) {
+      if (flags.includes('union_sqli') && (/'\s*union\s+select/i.test(val) || /or\s+1\s*=\s*1/i.test(val) || /drop\s+table/i.test(val))) {
         setAlertType('sqli');
         setAlertTitle('UNION-based SQL Injection Simulation!');
         setAlertPayload(val);
-        setVulnCode(`// Vulnerable SQL query creation:
+        setVulnCode(`// Vulnerable SQL query creation (Backend):
 const sql = "SELECT * FROM users WHERE name = '" + query + "'";
 db.execute(sql);`);
         setFixedCode(`// Fixed SQL using PreparedStatement:
 const sql = "SELECT * FROM users WHERE name = ?";
 db.execute(sql, [query]);`);
+
+        // Note: Real data fetching is now handled inside TutorGrid to replace the list directly.
         setAlertOpen(true);
       }
     };
@@ -312,58 +321,8 @@ if (session.user.role === 'admin') {
 
   return (
     <>
-      {/* Sandbox Status Bar / Banner at the top of client pages */}
-      {isBannerVisible && (
-        <div className="sticky top-0 z-50 flex w-full items-center justify-between border-b border-yellow-500/40 bg-yellow-500/10 px-4 py-2.5 backdrop-blur-md transition-all animate-in slide-in-from-top duration-300">
-          <div className="flex items-center gap-2 text-xs md:text-sm text-yellow-500 font-medium">
-            <span className="animate-pulse text-sm">⚠️</span>
-            <span>
-              <strong>Chế độ Bảo mật Sandbox đang hoạt động</strong>: {flags.length}/22 lỗ hổng đang bật.
-            </span>
-            <div className="hidden md:flex gap-1">
-              {flags.slice(0, 3).map((f) => (
-                <Badge key={f} variant="outline" className="text-[10px] py-0 border-yellow-500/40 text-yellow-600 bg-yellow-500/5">
-                  {f}
-                </Badge>
-              ))}
-              {flags.length > 3 && (
-                <Badge variant="outline" className="text-[10px] py-0 border-yellow-500/40 text-yellow-600 bg-yellow-500/5">
-                  +{flags.length - 3} khác
-                </Badge>
-              )}
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={handleResetSandbox}
-              className="text-[11px] h-7 border-yellow-600/40 text-yellow-600 hover:bg-yellow-500/20 font-sans"
-            >
-              Reset Sandbox
-            </Button>
-            <button
-              onClick={() => setIsBannerVisible(false)}
-              className="text-yellow-600 hover:text-yellow-800 transition-colors p-1"
-            >
-              <Icons.close size={14} />
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Floating button to restore banner if closed */}
-      {!isBannerVisible && (
-        <button
-          onClick={() => setIsBannerVisible(true)}
-          className="fixed bottom-4 right-4 z-50 flex items-center gap-2 rounded-full border border-yellow-500/40 bg-yellow-500/90 text-yellow-950 font-bold px-4 py-2 shadow-lg hover:bg-yellow-500 hover:scale-105 transition-all text-xs font-sans animate-bounce"
-        >
-          <span>⚠️ Sandbox Active</span>
-        </button>
-      )}
-
-      {/* Vuln Alert Dialog Displaying Vulnerability Info */}
-      <Dialog open={alertOpen} onOpenChange={setAlertOpen}>
+      {/* Vuln Alert Dialog Displaying Vulnerability Info (Except SQLi) */}
+      <Dialog open={alertOpen && alertType !== 'sqli'} onOpenChange={setAlertOpen}>
         <DialogContent className="max-w-2xl bg-zinc-950 text-zinc-100 border-zinc-800/80 shadow-2xl rounded-xl p-6 font-sans">
           <DialogHeader className="space-y-1.5">
             <DialogTitle className="flex items-center gap-2 text-red-400 font-bold text-lg">
@@ -389,45 +348,14 @@ if (session.user.role === 'admin') {
               <div className="rounded-lg border border-yellow-600/30 bg-background/50 p-4">
                 <p className="text-[11px] font-semibold text-yellow-400 uppercase tracking-wider mb-2">Giao diện bị ảnh hưởng (HTML Rendered):</p>
                 {/* eslint-disable-next-line react/no-danger */}
-                <div 
+                <div
                   className="p-3 border border-dashed border-zinc-800 rounded bg-zinc-900/30"
-                  dangerouslySetInnerHTML={{ __html: alertPayload }} 
+                  dangerouslySetInnerHTML={{ __html: alertPayload }}
                 />
               </div>
             )}
 
-            {/* Simulated Leakage table if UNION SQL Injection */}
-            {alertType === 'sqli' && (
-              <div className="rounded-lg border border-amber-600/30 bg-background/50 p-4 overflow-hidden">
-                <p className="text-[11px] font-semibold text-amber-400 uppercase tracking-wider mb-2">Kết quả rò rỉ dữ liệu (Exposed DB Data):</p>
-                <div className="overflow-x-auto rounded border border-zinc-800 text-[11px]">
-                  <table className="min-w-full divide-y divide-zinc-800 font-mono text-zinc-300">
-                    <thead className="bg-zinc-900">
-                      <tr>
-                        <th className="px-3 py-1.5 text-left font-semibold">id</th>
-                        <th className="px-3 py-1.5 text-left font-semibold">username</th>
-                        <th className="px-3 py-1.5 text-left font-semibold">password_hash</th>
-                        <th className="px-3 py-1.5 text-left font-semibold">role</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-zinc-800 bg-zinc-950/50">
-                      <tr>
-                        <td className="px-3 py-1.5">1</td>
-                        <td className="px-3 py-1.5">admin@tutornet.vn</td>
-                        <td className="px-3 py-1.5">$2b$12$R9h/cIPY... (MD5: e10adc3949ba59abbe56e057f20f883e)</td>
-                        <td className="px-3 py-1.5">SUPER_ADMIN</td>
-                      </tr>
-                      <tr>
-                        <td className="px-3 py-1.5">2</td>
-                        <td className="px-3 py-1.5">tutor_manager@tutornet.vn</td>
-                        <td className="px-3 py-1.5">$2b$12$K82jDpqW... (MD5: 21232f297a57a5a743894a0e4a801fc3)</td>
-                        <td className="px-3 py-1.5">ADMIN</td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
+            {/* SQLi is rendered separately outside Dialog */}
 
             {/* Code Diff Comparison */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-[11px]">
@@ -452,6 +380,9 @@ if (session.user.role === 'admin') {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Raw Data Display for SQLi on the main interface */}
+      {/* Moved to TutorGrid to replace the tutor list directly */}
     </>
   );
 }

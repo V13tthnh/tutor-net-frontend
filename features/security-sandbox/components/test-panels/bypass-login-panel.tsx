@@ -24,8 +24,8 @@ export function BypassLoginPanel() {
 
   return (
     <div className="space-y-4">
-      <Alert className="border-yellow-500/40 bg-yellow-500/10">
-        <AlertDescription className="text-yellow-300 text-xs">
+      <Alert className="border-amber-500/30 bg-amber-500/5 dark:border-amber-500/40 dark:bg-amber-500/10">
+        <AlertDescription className="text-amber-800 dark:text-amber-300 text-xs">
           <strong>Mô phỏng:</strong> Khi flag bật, server bỏ qua kiểm tra mật khẩu — mọi credential đều được chấp nhận và trả về JWT hợp lệ.
         </AlertDescription>
       </Alert>

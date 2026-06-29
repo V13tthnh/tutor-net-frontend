@@ -35,7 +35,9 @@ async function handleProxy(
   const { path } = await context.params;
   let pathStr = path.join('/');
 
-  if (!isSafePath(pathStr)) {
+  // Cho phép ký tự .. đi qua Proxy để mô phỏng lỗ hổng Path Traversal nếu đang gọi API download demo
+  const isDemoDownload = pathStr.includes('upload/files/download') || pathStr.includes('demo/files/read');
+  if (!isDemoDownload && !isSafePath(pathStr)) {
     return NextResponse.json(
       { success: false, message: 'Yêu cầu không hợp lệ' },
       { status: 400 }
@@ -111,6 +113,22 @@ async function handleProxy(
         headers.set(key, value);
       }
     });
+
+    // Forward the security_sandbox, TUTOR_SESSION, and SESS cookies so the backend can read them
+    const cookieList: string[] = [];
+    const sandboxCookie = request.cookies.get('security_sandbox')?.value;
+    if (sandboxCookie) cookieList.push(`security_sandbox=${sandboxCookie}`);
+    
+    const tutorSessionCookie = request.cookies.get('TUTOR_SESSION')?.value;
+    if (tutorSessionCookie) cookieList.push(`TUTOR_SESSION=${tutorSessionCookie}`);
+
+    const sessCookie = request.cookies.get('SESS')?.value;
+    if (sessCookie) cookieList.push(`SESS=${sessCookie}`);
+
+    if (cookieList.length > 0) {
+      headers.set('Cookie', cookieList.join('; '));
+    }
+
     return headers;
   }
 

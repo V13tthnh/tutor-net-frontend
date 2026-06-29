@@ -32,8 +32,8 @@ export function WeakPasswordPanel() {
 
   return (
     <div className="space-y-4">
-      <Alert className="border-yellow-500/40 bg-yellow-500/10">
-        <AlertDescription className="text-yellow-300 text-xs">
+      <Alert className="border-amber-500/30 bg-amber-500/5 dark:border-amber-500/40 dark:bg-amber-500/10">
+        <AlertDescription className="text-amber-800 dark:text-amber-300 text-xs">
           <strong>Mô phỏng:</strong> Đăng ký tài khoản không có yêu cầu độ phức tạp mật khẩu. Mật khẩu &quot;123&quot; hoặc &quot;abc&quot; được chấp nhận.
         </AlertDescription>
       </Alert>

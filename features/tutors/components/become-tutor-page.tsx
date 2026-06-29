@@ -452,6 +452,8 @@ export default function BecomeTutorPage() {
           avatarUrl = res.data.url;
           becomeTutorDataRef.current.certificatesConfirm.avatarUrl = avatarUrl;
           becomeTutorDataRef.current.personal.avatarUrl = avatarUrl;
+        } else {
+          throw new Error('Lỗi: Upload ảnh đại diện thất bại!');
         }
       }
 
@@ -464,6 +466,8 @@ export default function BecomeTutorPage() {
         if (res.success) {
           studentCardUrl = res.data.url;
           becomeTutorDataRef.current.certificatesConfirm.studentCardUrl = studentCardUrl;
+        } else {
+          throw new Error('Lỗi: Upload ảnh thẻ sinh viên thất bại!');
         }
       }
 
@@ -554,6 +558,8 @@ export default function BecomeTutorPage() {
           await apiClient(`/tutor/profile/certificates?${params.toString()}`, {
             method: 'POST',
           });
+        } else {
+          throw new Error(`Lỗi: Tải lên tệp chứng chỉ "${cert.name}" thất bại!`);
         }
       }
 
@@ -716,6 +722,8 @@ export default function BecomeTutorPage() {
           await apiClient(`/tutor/profile/certificates?${params.toString()}`, {
             method: 'POST',
           });
+        } else {
+          throw new Error(`Lỗi: Tải lên tệp chứng chỉ "${cert.name}" thất bại!`);
         }
       }
 
